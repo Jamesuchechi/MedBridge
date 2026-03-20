@@ -1,0 +1,4 @@
+
+> @medbridge/db@0.1.0 build /home/jamesuchechi/Projects/MedBridge/packages/db
+> prisma generate && tsc
+

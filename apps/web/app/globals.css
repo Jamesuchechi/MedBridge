@@ -1,0 +1,224 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Google Fonts fallback (also loaded via next/font) ──────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@300;400;500&display=swap');
+
+/* ─── Design Tokens — Dark Mode (default) ───────────────────────────────── */
+:root {
+  /* Backgrounds */
+  --bg-primary: #03050a;
+  --bg-secondary: #080c14;
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-card-hover: rgba(255, 255, 255, 0.07);
+
+  /* Glassmorphism */
+  --glass-bg: rgba(10, 15, 30, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.18);
+
+  /* Foreground / Text */
+  --text-primary: #f0f4ff;
+  --text-secondary: rgba(240, 244, 255, 0.55);
+  --text-muted: rgba(240, 244, 255, 0.3);
+
+  /* Brand accent colors */
+  --accent-primary: #00e5a0;    /* MedBridge green */
+  --accent-secondary: #3d9bff;  /* Blue */
+  --accent-tertiary: #c77dff;   /* Purple */
+  --accent-warm: #ff6b6b;       /* Emergency red */
+
+  /* Component-specific */
+  --ring-color: rgba(0, 229, 160, 0.15);
+  --africa-fill: rgba(0, 229, 160, 0.04);
+  --nav-bg: rgba(3, 5, 10, 0.85);
+
+  /* Shadows */
+  --shadow-glow: 0 0 60px rgba(0, 229, 160, 0.12);
+  --shadow-card: 0 8px 40px rgba(0, 0, 0, 0.4);
+
+  /* Gradients */
+  --gradient-hero: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0, 229, 160, 0.15) 0%, transparent 70%);
+  --gradient-feature: linear-gradient(135deg, rgba(0, 229, 160, 0.05) 0%, rgba(61, 155, 255, 0.05) 100%);
+
+  /* Radius */
+  --radius: 0.75rem;
+}
+
+/* ─── Design Tokens — Light Mode ─────────────────────────────────────────── */
+[data-theme="light"],
+.light {
+  --bg-primary: #f0f4f8;
+  --bg-secondary: #e4ebf5;
+  --bg-card: rgba(255, 255, 255, 0.7);
+  --bg-card-hover: rgba(255, 255, 255, 0.9);
+  --glass-bg: rgba(240, 244, 248, 0.75);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-hover: rgba(0, 150, 100, 0.3);
+  --text-primary: #0d1117;
+  --text-secondary: rgba(13, 17, 23, 0.6);
+  --text-muted: rgba(13, 17, 23, 0.35);
+  --accent-primary: #00a870;
+  --accent-secondary: #1a6fcc;
+  --accent-tertiary: #7c3aed;
+  --accent-warm: #e85050;
+  --ring-color: rgba(0, 168, 112, 0.2);
+  --africa-fill: rgba(0, 168, 112, 0.06);
+  --nav-bg: rgba(240, 244, 248, 0.9);
+  --shadow-glow: 0 0 60px rgba(0, 168, 112, 0.1);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --gradient-hero: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0, 168, 112, 0.12) 0%, transparent 70%);
+  --gradient-feature: linear-gradient(135deg, rgba(0, 168, 112, 0.06) 0%, rgba(26, 111, 204, 0.06) 100%);
+}
+
+/* ─── Base Resets ─────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* ─── Typography Utilities ────────────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-syne), sans-serif;
+}
+
+.font-mono {
+  font-family: var(--font-dm-mono), monospace;
+}
+
+/* ─── Gradient Text ───────────────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Glass Card Base ─────────────────────────────────────────────────────── */
+.glass {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+}
+
+/* ─── Custom Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 100px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+/* ─── Focus Ring ──────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Selection ───────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(0, 229, 160, 0.2);
+  color: var(--text-primary);
+}
+
+/* ─── Container ───────────────────────────────────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* ─── Animations ──────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideLeft {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.5); }
+}
+
+/* ─── Utility Classes ─────────────────────────────────────────────────────── */
+.animate-fade-in { animation: fadeIn 0.5s ease forwards; }
+.animate-slide-down { animation: slideDown 0.5s ease forwards; }
+.animate-slide-up { animation: slideUp 0.5s ease forwards; }
+.animate-float { animation: float 4s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulseGlow 3s ease-in-out infinite; }
+.animate-spin-slow { animation: spin 20s linear infinite; }

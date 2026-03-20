@@ -1,13 +1,5 @@
 {
   "name": "@medbridge/ui",
   "version": "0.1.0",
-  "private": true,
-  "main": "src/index.ts",
-  "scripts": {
-    "build": "tsc"
-  },
-  "devDependencies": {
-    "typescript": "^5.0.0",
-    "react": "^18.2.0"
-  }
+  "private": true
 }

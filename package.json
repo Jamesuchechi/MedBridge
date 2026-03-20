@@ -1,20 +1,22 @@
 {
   "name": "medbridge",
   "private": true,
-  "description": "One platform. Two portals. Your complete healthcare OS.",
   "scripts": {
-    "dev": "pnpm -r --parallel dev",
-    "build": "pnpm -r build",
-    "lint": "pnpm -r lint",
-    "test": "pnpm -r test"
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "db:generate": "pnpm --filter db db:generate",
+    "db:migrate": "pnpm --filter db db:migrate",
+    "db:seed": "pnpm --filter db db:seed",
+    "db:studio": "pnpm --filter db db:studio"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "prettier": "^3.0.0",
-    "eslint": "^8.0.0"
+    "turbo": "latest"
   },
-  "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=20.0.0"
-  }
+  },
+  "packageManager": "pnpm@8.15.6"
 }

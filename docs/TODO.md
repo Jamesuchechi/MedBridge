@@ -1,260 +1,559 @@
-# Healthbridge — Building Phases
+# MedBridge — Build Todo
 
-> Status legend: `[ ]` not started · `[~]` in progress · `[x]` complete
+> Every task from zero to fully shipped product. Work top to bottom. Do not skip phases.
 
 ---
 
-## Phase 0 — Foundation (Week 1–2)
+## Legend
 
-### Monorepo & tooling
-- [ ] Initialise pnpm workspace monorepo
-- [ ] Set up `packages/config` with shared ESLint, Prettier, TypeScript configs
-- [ ] Set up `packages/shared` with base type definitions
-- [ ] Configure Turborepo for parallel builds
-- [ ] Set up GitHub Actions CI (lint + typecheck on every PR)
-- [ ] Set up Husky pre-commit hooks
+```
+[ ] Not started
+[x] Complete
+[~] In progress
+[!] Blocked
+```
+
+---
+
+## Phase 0 — Foundation & Landing Page (Week 1–2)
+
+### 0.1 Repository Setup [x]
+- [x] Initialize monorepo with pnpm workspaces
+- [x] Create `apps/web`, `apps/api`, `apps/ai-service` folders
+- [x] Create `packages/ui`, `packages/types`, `packages/utils`, `packages/db`
+- [x] Add root `package.json` with workspace config
+- [x] Add `.gitignore`, `.nvmrc` (Node 20), `.python-version` (3.11)
+- [x] Initialize git, create `main`, `develop` branches
+- [x] Add `turbo.json` for Turborepo build pipeline
+- [x] Add `pnpm-workspace.yaml`
+
+### 0.2 Next.js Frontend Bootstrap [x]
+- [x] `pnpm create next-app apps/web` with TypeScript, Tailwind, App Router
+- [x] Install and configure shadcn/ui
+- [x] Install Zustand, TanStack Query
+- [x] Set up base layout (`app/layout.tsx`) with font (Syne, DM Sans)
+- [x] Set up global CSS variables (design tokens: brand colors, spacing)
+- [x] Configure `next.config.ts` (image domains, environment vars)
+- [x] Set up path aliases (`@/components`, `@/lib`, `@/store`)
+- [x] Add ESLint + Prettier config
+- [x] Confirm `pnpm dev` runs cleanly at localhost:3000
+
+### 0.3 Landing Page [x]
+- [x] Design and build Navbar component (logo, nav links, CTA button)
+- [x] Build Hero section (headline, subheadline, waitlist/signup CTA)
+- [x] Build "Problem" section (healthcare in Nigeria — stats + pain points)
+- [x] Build "Solution" section (MedBridge modules overview with icons)
+- [x] Build "For Who" section (Patient / Doctor / Clinic cards)
+- [x] Build "How It Works" section (3-step explainer)
+- [x] Build "AfriDx" callout section (Nigerian-specific intelligence highlight)
+- [x] Build Pricing section (Freemium / Pro / Clinic tiers — placeholder)
+- [x] Build Waitlist/CTA section with email capture form
+- [x] Build Footer (links, legal, social)
+- [ ] Wire email capture to Resend or Loops mailing list
+- [x] Make fully responsive (mobile, tablet, desktop)
+- [x] Add basic SEO metadata (title, description, OG image)
+- [x] Add favicon and brand assets
+
+### 0.4 Node.js API Bootstrap [x]
+- [x] Init Express app with TypeScript in `apps/api`
+- [x] Set up folder structure: `routes/`, `controllers/`, `services/`, `middleware/`, `db/`
+- [x] Add `helmet`, `cors`, `express-rate-limit`, `morgan`
+- [x] Add Zod for request validation
+- [x] Set up environment variable loading with `dotenv` + type-safe config
+- [x] Add `/health` endpoint
+- [x] Confirm `pnpm dev` runs cleanly at localhost:3001
+
+### 0.5 Python AI Service Bootstrap [x]
+- [x] Init FastAPI app in `apps/ai-service`
+- [x] Set up `requirements.txt` (fastapi, uvicorn, openai, groq, python-dotenv, jinja2, pydantic)
+- [x] Create virtual environment setup instructions
+- [x] Add `/health` endpoint
+- [x] Add base router structure (`routers/symptom.py`, `routers/document.py`, etc.)
+- [x] Confirm `uvicorn main:app --reload` runs at localhost:8000
+
+### 0.6 Database Setup [x]
+- [x] Create Supabase project
+- [x] Add `DATABASE_URL` to `.env`
+- [x] Install Drizzle ORM in `apps/api`
+- [x] Write initial schema migrations (users, health_profiles, symptom_checks, medical_documents, drugs)
+- [x] Run initial migration
+- [x] Enable Row-Level Security on all patient tables (Instructional in walkthrough)
+- [x] Write base RLS policies
+- [x] Install `pg_vector` extension on Supabase (Instructional)
+- [x] Seed Nigerian drug database (Phase 0 version — basic 500 drugs)
+- [x] Seed symptom taxonomy
+- [x] Add `/api/db-test` endpoint to API service
+
+### 0.7 Docker & Local Dev [x]
+- [x] Write `docker-compose.yml` for local Postgres + Redis
+- [x] Add `.env.example` with all required variables documented
+- [x] Write `README.md` quick-start section
+- [x] Confirm full local stack runs with one command: `pnpm dev`
+
+### 0.8 CI/CD Pipeline [x]
+- [x] Create `.github/workflows/ci.yml` (lint, typecheck, test on PR)
+- [x] Create `.github/workflows/deploy-staging.yml` (auto-deploy on push to `develop`)
+- [x] Set up Vercel project linked to repo
+- [x] Set up Railway project for API + AI service
+- [x] Configure staging environment variables in both platforms
+- [x] Confirm staging deployment works end-to-end
+
+---
+
+## Phase 1 — MVP: Symptom Checker + Document Analyzer (Week 3–8)
+
+### 1.1 Authentication [x]
+- [x] Install Supabase Auth client in `apps/web`
+- [x] Build Signup page (`/app/(auth)/signup/page.tsx`)
+- [x] Build Login page (`/app/(auth)/login/page.tsx`)
+- [x] Build Forgot Password page + Reset Password page
+- [x] Implement email verification flow
+- [x] Set up Supabase Auth session management with Next.js middleware
+- [x] Protect all `(dashboard)` routes — redirect to login if unauthenticated
+- [x] Add auth middleware to `apps/api` (JWT verification)
+- [x] Add `GET /auth/me` endpoint
+- [x] Build auth Zustand store (user, session, loading state)
+- [x] Add logout functionality
+- [x] Test: signup → verify email → login → access dashboard → logout
+
+### 1.2 Dashboard Shell [x]
+- [x] Build authenticated layout with sidebar navigation
+- [x] Sidebar items: Dashboard, Symptoms, Documents, Drugs, Profile, (Doctor - gated), Settings
+- [x] Build dashboard home page (welcome, recent activity, quick actions)
+- [x] Build user settings page (update name, email, password)
+- [x] Add mobile-responsive sidebar (hamburger menu / bottom nav)
+
+### 1.3 Health Profile Setup
+- [ ] Build health profile form (date of birth, sex, blood type, genotype, allergies, chronic conditions, medications)
+- [ ] `POST /profile` API endpoint
+- [ ] `GET /profile` API endpoint
+- [ ] Save profile to `health_profiles` table
+- [ ] Display profile summary on dashboard home
+- [ ] Prompt new users to complete profile (used to enrich AI calls)
+
+### 1.4 Symptom Checker — Frontend
+- [ ] Build symptom input UI (searchable tag input with autocomplete from symptom taxonomy)
+- [ ] Build duration selector (hours / days / weeks)
+- [ ] Build severity slider (1–10 with descriptive labels)
+- [ ] Build additional context inputs (fever, location, known conditions)
+- [ ] Build loading state (streaming-style UI while AI processes)
+- [ ] Build results display:
+  - [ ] Possible conditions list with probability indicators
+  - [ ] Severity / urgency banner (color-coded: green / amber / red)
+  - [ ] Recommended next steps
+  - [ ] Emergency alert UI (full-screen red banner for critical symptoms)
+  - [ ] Mandatory disclaimer component (always visible, styled appropriately)
+  - [ ] "Find a clinic near you" CTA (links to Google Maps with location)
+- [ ] Build symptom history list page (`/symptoms`)
+- [ ] Build individual symptom check detail page (`/symptoms/[id]`)
+
+### 1.5 Symptom Checker — Backend
+- [ ] `POST /api/v1/symptoms/analyze` endpoint
+- [ ] Request validation schema (Zod)
+- [ ] Fetch user health profile for context enrichment
+- [ ] Call Python AI service at `/internal/symptom/analyze`
+- [ ] Save result to `symptom_checks` table
+- [ ] `GET /api/v1/symptoms/history` endpoint (paginated)
+- [ ] `GET /api/v1/symptoms/:id` endpoint
+- [ ] Rate limit: 10 symptom checks per user per day (freemium)
+
+### 1.6 Symptom Checker — AI Service
+- [ ] Write `routers/symptom.py` with `/internal/symptom/analyze` endpoint
+- [ ] Implement safety check (`core/safety.py`)
+  - [ ] Emergency pattern matching
+  - [ ] Return emergency response immediately without LLM if triggered
+- [ ] Write symptom analysis prompt template (`prompts/symptom_analysis/v1.j2`)
+- [ ] Implement LLM call (GPT-4o primary, Groq Llama3 fallback)
+- [ ] Parse structured LLM output (condition list, probabilities, reasoning)
+- [ ] Implement AfriDx regional weighting (`core/afridx.py`)
+  - [ ] Nigeria prevalence weights dictionary
+  - [ ] Seasonal adjustment (malaria higher May–Oct rainy season)
+  - [ ] Genotype intersection (sickle cell crisis weighting)
+- [ ] Apply response safety filter (post-LLM guardrails)
+- [ ] Return structured `SymptomAnalysisResult` Pydantic model
+- [ ] Write unit tests for AfriDx weighting
+- [ ] Write unit tests for safety layer
+
+### 1.7 Document Analyzer — Frontend
+- [ ] Build document upload component (drag-and-drop + file picker)
+  - [ ] Supported types: PDF, JPG, PNG, WEBP
+  - [ ] Client-side validation (type + 10MB size limit)
+  - [ ] Upload progress indicator
+- [ ] Build document type selector (lab result / prescription / medical report / scan)
+- [ ] Build documents list page (`/documents`) with status badges (pending / processing / complete / failed)
+- [ ] Build document detail page (`/documents/[id]`)
+  - [ ] Original file preview (PDF viewer or image)
+  - [ ] Analysis results panel:
+    - [ ] Key findings section
+    - [ ] Abnormal values highlighted in red/amber
+    - [ ] Plain English summary
+    - [ ] Risk flags
+  - [ ] Mandatory disclaimer
+- [ ] Implement polling for document status (every 3 seconds while `pending` or `processing`)
+- [ ] Add websocket listener for completion notification (upgrade polling later)
+
+### 1.8 Document Analyzer — Backend
+- [ ] `GET /api/v1/documents/upload-url` — generate Supabase pre-signed upload URL
+- [ ] `POST /api/v1/documents` — create document record after upload
+- [ ] `GET /api/v1/documents` — list user's documents (paginated)
+- [ ] `GET /api/v1/documents/:id` — get document + analysis result
+- [ ] `DELETE /api/v1/documents/:id` — soft delete
+- [ ] Set up BullMQ document analysis queue
+- [ ] Write BullMQ worker that calls AI service and updates DB
+- [ ] Handle worker failure (retry 3x, then mark as `failed`)
+
+### 1.9 Document Analyzer — AI Service
+- [ ] Write `routers/document.py` with `/internal/document/analyze` endpoint
+- [ ] Implement file type detection
+- [ ] Implement OCR for image files (Tesseract or AWS Textract)
+- [ ] Write document classification logic (detect: lab result / prescription / report)
+- [ ] Write extraction prompt templates:
+  - [ ] `prompts/document_extraction/lab_result_v1.j2`
+  - [ ] `prompts/document_extraction/prescription_v1.j2`
+  - [ ] `prompts/document_extraction/report_v1.j2`
+- [ ] Parse structured extraction output
+- [ ] Flag abnormal values (for lab results — compare against reference ranges)
+- [ ] Generate plain English summary
+- [ ] Return structured `DocumentExtractionResult`
+- [ ] Handle parsing failures gracefully (return partial result with error flag)
+
+### 1.10 Phase 1 Testing & Polish
+- [ ] Write E2E tests (Playwright):
+  - [ ] Full signup → complete profile → run symptom check → view results
+  - [ ] Login → upload document → wait for processing → view analysis
+  - [ ] Emergency symptom triggers emergency UI
+- [ ] Load test symptom endpoint (target: <3s P95 response time)
+- [ ] Cross-browser test (Chrome, Firefox, Safari, mobile browsers)
+- [ ] Accessibility audit (keyboard navigation, screen reader, contrast ratios)
+- [ ] Deploy Phase 1 to production
+- [ ] Set up Sentry error tracking
+- [ ] Set up Posthog for usage analytics
+
+---
+
+## Phase 2 — Drug Intelligence + Health Profiles (Week 9–14)
+
+### 2.1 Nigerian Drug Database — Expanded
+- [ ] Expand drug seed data to 5,000+ NAFDAC-registered drugs
+- [ ] Include: generic name, Nigerian brand names, manufacturer, form, strength
+- [ ] Include: common uses, contraindications, common interactions
+- [ ] Add: common price range (Lagos market price)
+- [ ] Set up Typesense for drug search indexing
+- [ ] Sync Postgres drug table to Typesense index
+- [ ] Build drug search API with Typesense (`GET /api/v1/drugs/search?q=`)
+
+### 2.2 Drug Intelligence — Frontend
+- [ ] Build drug search page (`/drugs`)
+  - [ ] Search input with real-time Typesense results
+  - [ ] Drug card component (name, category, form, strength)
+  - [ ] Drug detail page (`/drugs/[id]`)
+    - [ ] Full drug information display
+    - [ ] Common uses section
+    - [ ] Side effects section
+    - [ ] "Ask about this drug" AI chat button
+- [ ] Build drug interaction checker
+  - [ ] Multi-drug selector (add 2–8 drugs)
+  - [ ] Run interaction check button
+  - [ ] Results: interaction matrix, severity levels (minor / moderate / severe)
+  - [ ] Mandatory disclaimer
+- [ ] Build drug explanation UI (ask plain English question about drug)
+- [ ] Build "My Medications" section in health profile
+
+### 2.3 Drug Intelligence — Backend + AI
+- [ ] `GET /api/v1/drugs/search` — Typesense search endpoint
+- [ ] `GET /api/v1/drugs/:id` — Drug detail from Postgres
+- [ ] `POST /api/v1/drugs/explain` — AI drug explanation
+- [ ] `POST /api/v1/drugs/interactions` — AI interaction check
+- [ ] Python AI: write `routers/drug.py`
+- [ ] Write drug explanation prompt template
+- [ ] Write drug interaction prompt template
+- [ ] Build interaction severity classification
+- [ ] Add local NAFDAC interaction database (known dangerous combos)
+- [ ] Save all drug queries to `drug_queries` table for profile memory
+
+### 2.4 Health Profile — Enhanced
+- [ ] Add medication tracking (add/edit/remove current medications)
+- [ ] Add allergy management (add/remove allergies with reaction type)
+- [ ] Add medical history (past conditions, surgeries, hospitalizations)
+- [ ] Add family history section (diabetes, hypertension, sickle cell, cancer)
+- [ ] Add vaccination record section
+- [ ] Add emergency contacts
+- [ ] Implement profile completion percentage indicator
+- [ ] Embed health profile into all AI calls automatically
+
+### 2.5 CommunityRx — Phase 1 (Pharmacy Locator)
+- [ ] Build pharmacy search by location (`/drugs/pharmacies`)
+- [ ] Integrate Google Maps Places API for pharmacy discovery
+- [ ] Build "report drug availability" feature (crowdsourced)
+- [ ] Build drug pricing report form (user submits price at specific pharmacy)
+- [ ] Build price comparison display on drug detail page
+- [ ] Moderation queue for submitted prices (auto-approve within range, flag outliers)
+
+### 2.6 Phase 2 Testing & Polish
+- [ ] E2E test: Search drug → check interactions → view detail → save to profile
+- [ ] E2E test: Complete health profile → run symptom check — verify profile used in AI call
+- [ ] Drug interaction test cases (known dangerous combos must flag correctly)
+- [ ] Performance: drug search P95 < 200ms (Typesense target)
+- [ ] Deploy Phase 2 to production
+- [ ] Analytics: track drug search queries, most-checked interactions
+
+---
+
+## Phase 3 — Doctor Copilot + Referral Intelligence (Week 15–22)
+
+### 3.1 Doctor Onboarding
+- [ ] Build doctor signup flow (separate from patient signup)
+- [ ] Add MDCN registration number field (Medical and Dental Council of Nigeria)
+- [ ] Add specialization selection
+- [ ] Add clinic association (link to existing clinic or mark as independent)
+- [ ] Build doctor verification queue (admin reviews before activating copilot access)
+- [ ] Send verification email on approval
+- [ ] Doctor-gated routes: check `role === 'doctor'` + `mdcn_verified === true`
+
+### 3.2 Doctor Copilot — Frontend
+- [ ] Build doctor dashboard (separate from patient dashboard)
+  - [ ] Active patients list
+  - [ ] Recent consultations
+  - [ ] Quick case analysis button
+- [ ] Build case analysis form:
+  - [ ] Patient info input (age, sex, or link to MedBridge patient)
+  - [ ] Chief complaint (free text or structured input)
+  - [ ] History of presenting illness
+  - [ ] Vitals input (BP, temp, pulse, respiratory rate, O2 sat)
+  - [ ] Systems review checkboxes
+  - [ ] Preliminary findings / examination notes
+- [ ] Build copilot results view:
+  - [ ] Clinical summary (AI-generated, editable)
+  - [ ] Top 5 differentials with reasoning and confidence
+  - [ ] Suggested investigations (tests to order)
+  - [ ] "For consideration only — clinical judgment required" banner
+  - [ ] Export as PDF button
+- [ ] Build clinical note generator
+  - [ ] Input: case data
+  - [ ] Output: SOAP note format (Subjective / Objective / Assessment / Plan)
+  - [ ] Editable before saving
+  - [ ] Copy to clipboard / export
+
+### 3.3 Doctor Copilot — Backend + AI
+- [ ] `POST /api/v1/copilot/analyze` — role-gated to `doctor`
+- [ ] `POST /api/v1/copilot/note` — generate SOAP note
+- [ ] Python AI: write `routers/copilot.py`
+- [ ] Write doctor copilot prompt template (`prompts/doctor_copilot/v1.j2`)
+  - [ ] Include Nigerian disease context in system prompt
+  - [ ] Include tropical medicine differential weighting
+- [ ] Apply AfriDx engine to copilot differentials (same as symptom checker)
+- [ ] Write SOAP note generation prompt
+- [ ] Structured output parsing with Pydantic
+- [ ] Audit trail: log all copilot sessions with doctor ID, timestamp, prompt version
+
+### 3.4 Referral Intelligence
+- [ ] Build referral creation form (from copilot output or standalone)
+  - [ ] Select receiving doctor (search by name / specialization)
+  - [ ] Auto-populate with copilot case summary
+  - [ ] Urgency score selector (1–5)
+  - [ ] Add additional notes
+- [ ] `POST /api/v1/copilot/referral` — creates referral record
+- [ ] Build receiving doctor notification (email + in-app)
+- [ ] Build referral inbox for doctors (list of incoming referrals)
+- [ ] Build referral detail view (full clinical packet)
+- [ ] Build referral status tracking (pending / accepted / completed)
+- [ ] Generate referral PDF document (for physical handover)
+- [ ] Patient notification when referral is created
+
+### 3.5 Patient–Doctor Connection
+- [ ] Build "Find a Doctor" feature for patients
+  - [ ] Search by specialization, location, clinic
+  - [ ] Doctor profile cards (specialization, clinic, bio)
+- [ ] Build consultation request flow (patient requests consultation)
+- [ ] Doctor can accept/decline consultation requests
+- [ ] Shared record view: doctor can view patient's MedBridge health profile (with consent)
+- [ ] Patient consent flow: grant/revoke doctor access to health profile
+
+### 3.6 Phase 3 Testing
+- [ ] E2E: Doctor signup → verified → run case analysis → generate referral
+- [ ] Test: unverified doctor cannot access copilot
+- [ ] Test: patient cannot access doctor routes
+- [ ] Test: referral notification reaches receiving doctor
+- [ ] Clinical accuracy spot-check: run 20 known cases through copilot, review output quality
+- [ ] Deploy Phase 3 to production
+
+---
+
+## Phase 4 — Clinic OS + MedBridge Pulse (Week 23–32)
+
+### 4.1 Clinic Onboarding
+- [ ] Build clinic registration form
+  - [ ] Clinic name, address, state, LGA
+  - [ ] CAC registration number
+  - [ ] Contact info
+  - [ ] Subscription tier selection
+- [ ] Admin reviews and activates clinic accounts
+- [ ] Clinic owner can invite staff (send invite email → staff accepts → linked to clinic)
+- [ ] Staff roles: doctor, nurse, receptionist, admin
+
+### 4.2 Clinic Patient Management
+- [ ] Build patient registration form for clinic (create or link existing MedBridge account)
+- [ ] Build patient list with search and filter
+- [ ] Build patient detail view (full record: visits, documents, notes, medications)
+- [ ] Import existing patient records (CSV upload with field mapping)
+- [ ] Patient consent flow: patient grants clinic access to their MedBridge profile
+
+### 4.3 Appointment System
+- [ ] Build appointment creation (receptionist / doctor / patient self-book)
+- [ ] Build appointment calendar view (day / week view per doctor)
+- [ ] Build appointment list view with filters (status, date, doctor)
+- [ ] Appointment status flow: pending → confirmed → completed / cancelled
+- [ ] SMS/email reminders (24h before appointment via Resend or Africa's Talking)
+- [ ] Waitlist feature for fully-booked slots
+- [ ] Build patient-facing booking page (patients book own appointments)
+
+### 4.4 Clinical Records (EMR)
+- [ ] Build encounter/visit form (doctor fills during/after consultation)
+  - [ ] Chief complaint
+  - [ ] Examination findings
+  - [ ] Diagnosis (ICD-11 code lookup)
+  - [ ] Prescription written
+  - [ ] Lab tests ordered
+  - [ ] Follow-up instructions
+- [ ] Link AI-generated SOAP notes to encounter records
+- [ ] Build prescription pad (structured prescription creation)
+  - [ ] Drug selection from Nigerian drug DB
+  - [ ] Dosage, frequency, duration
+  - [ ] Drug interaction check runs automatically
+  - [ ] Generate printable prescription
+- [ ] Build lab order form (request tests, track results)
+- [ ] Attach uploaded documents (lab results) to patient records
+
+### 4.5 Billing (Basic)
+- [ ] Build invoice creation (consultation fee + tests + medications)
+- [ ] Build payment recording (cash / card / transfer — manual for now)
+- [ ] Build patient billing history
+- [ ] Basic financial reports (revenue by month, by doctor, by service type)
+- [ ] Export invoices as PDF
+- [ ] NHIS integration research (roadmap item — complex)
+
+### 4.6 MedBridge Pulse (Employer Dashboard)
+- [ ] Build employer account type and onboarding
+- [ ] Employee enrollment (HR uploads employee list → employees receive invite)
+- [ ] Employee health activity tracking (opt-in only, aggregated and anonymized)
+- [ ] Build employer dashboard:
+  - [ ] Total enrolled employees
+  - [ ] Symptom check activity trends
+  - [ ] Top health concerns (anonymized, aggregated by condition category)
+  - [ ] Clinic visit frequency
+  - [ ] Medication usage patterns
+  - [ ] Emergency alerts (number of emergency-level symptom checks)
+- [ ] Export reports as PDF or CSV
+- [ ] Subscription billing for employers (Paystack integration)
+- [ ] Employee privacy: individual data never visible — only aggregate trends
+
+### 4.7 Paystack Billing Integration
+- [ ] Integrate Paystack for subscriptions
+  - [ ] Patient Pro plan
+  - [ ] Clinic Basic / Pro / Enterprise plans
+  - [ ] Employer Pulse plan
+- [ ] Build subscription management UI (upgrade, downgrade, cancel)
+- [ ] Webhook handling for payment events
+- [ ] Feature gates based on subscription tier
+- [ ] Build billing history page
+- [ ] Dunning emails (failed payment notifications)
+
+### 4.8 Phase 4 Testing
+- [ ] E2E: Clinic registers → adds staff → books appointment → creates encounter → generates prescription
+- [ ] E2E: Employer enrolls team → employees join → employer views Pulse dashboard
+- [ ] Billing: test Paystack webhooks (subscription start, renewal, failure)
+- [ ] Load test: simulate 100 concurrent clinic users (appointments, record updates)
+- [ ] Deploy Phase 4 to production
+- [ ] SOC 2 readiness review (gap analysis)
+
+---
+
+## Phase 5 — Voice Mode + USSD + CommunityRx Full (Week 33–42)
+
+### 5.1 Voice Mode
+- [ ] Integrate speech-to-text (Whisper API or Deepgram)
+- [ ] Build voice symptom intake (user speaks symptoms, AI transcribes + processes)
+- [ ] Build voice document reading (AI reads analysis results aloud)
+- [ ] Implement Yoruba, Hausa, Igbo language detection
+- [ ] Fine-tune transcription for Nigerian English and Pidgin
+- [ ] Test voice mode on low-end Android devices (primary target)
+
+### 5.2 USSD Integration
+- [ ] Set up Africa's Talking USSD gateway
+- [ ] Build USSD service (`apps/ussd-service`) — separate lightweight Node.js app
+- [ ] USSD symptom checker flow (text-only, 7-step max)
+- [ ] USSD drug lookup (search by drug name → get basic info)
+- [ ] USSD nearest clinic finder (by state/LGA)
+- [ ] USSD emergency detection → SMS with hospital directions
+- [ ] SMS result delivery for users without data
+- [ ] Test on Airtel, MTN, Glo, 9mobile networks
+
+### 5.3 CommunityRx — Full
+- [ ] Pharmacy onboarding portal (pharmacies claim their listing)
+- [ ] Real-time drug availability updates (pharmacy staff marks in/out of stock)
+- [ ] Drug price submission verification (compare against known price ranges, flag fraud)
+- [ ] Community trust score for pharmacies (based on report accuracy)
+- [ ] Counterfeit drug reporting (user reports suspected fake drug)
+- [ ] NAFDAC alert integration (display official counterfeit alerts)
+- [ ] Map view of pharmacies by drug availability
+
+### 5.4 Progressive Web App (PWA)
+- [ ] Configure next-pwa
+- [ ] Service worker for offline caching (dashboard, drug DB, recent documents)
+- [ ] Background sync for symptom checks submitted offline
+- [ ] Push notifications (appointment reminders, document ready, referral updates)
+- [ ] Add to home screen prompt
+
+### 5.5 Admin Panel
+- [ ] Build internal admin panel (`/admin` — separate gated route)
+  - [ ] User management (view, suspend, change roles)
+  - [ ] Doctor verification queue (approve / reject with reason)
+  - [ ] Clinic verification queue
+  - [ ] Drug database management (add, edit, verify drugs)
+  - [ ] System health dashboard (AI service status, queue depth, error rates)
+  - [ ] Feature flags management
+  - [ ] Content moderation (CommunityRx reports)
+
+### 5.6 Final Hardening & Launch Prep
+- [ ] Full security audit (OWASP Top 10 review)
+- [ ] Penetration test (hire external firm or use automated scanner)
+- [ ] NDPR compliance review (Nigeria Data Protection Regulation)
+- [ ] Write privacy policy and terms of service
+- [ ] Accessibility audit (WCAG 2.1 AA compliance)
+- [ ] Performance audit (Lighthouse score > 90 on all pages)
+- [ ] Final E2E test suite covering all phases
+- [ ] Disaster recovery drill (simulate DB failure, AI service outage)
+- [ ] Set up on-call rotation and incident response playbook
+- [ ] Press kit and launch assets
+
+---
+
+## Ongoing — Post-Launch
 
 ### Infrastructure
-- [ ] `docker-compose.yml` with PostgreSQL 15 + Redis 7
-- [ ] Prisma schema — initial tables (users, hospitals, staff, providers, appointments)
-- [ ] Initial database migration
-- [ ] `.env.example` with all required keys documented
-- [ ] Basic seed script (1 hospital, 5 providers, 10 medications)
+- [ ] Set up Datadog for full observability
+- [ ] Implement database read replicas for analytics queries
+- [ ] Set up automated database backups with tested restore process
+- [ ] PgBouncer connection pooling for Postgres
+- [ ] CDN for static assets (Cloudflare)
 
-### API — base setup
-- [ ] Express app with TypeScript
-- [ ] Request validation middleware (Zod)
-- [ ] Error handling middleware (standardised error shape)
-- [ ] Auth middleware (JWT verification, role extraction)
-- [ ] Health check endpoint `GET /health`
-- [ ] Logging (Pino)
+### Product
+- [ ] A/B testing framework (feature flags via Posthog)
+- [ ] In-app feedback widget
+- [ ] NPS survey (30 days after signup)
+- [ ] Doctor feedback loop on copilot accuracy
+- [ ] Monthly AI model evaluation (prompt regression tests on known cases)
+- [ ] Expand drug database to 15,000+ drugs
+- [ ] Expand AfriDx to cover East and West African regions
 
----
-
-## Phase 1 — Consumer Auth + Triage (Week 3–5)
-
-### Consumer auth
-- [ ] `POST /auth/register` — email + phone OTP
-- [ ] `POST /auth/login`
-- [ ] `GET /auth/me`
-- [ ] Supabase Auth integration
-- [ ] React Native auth screens (Register, Login, OTP verify)
-- [ ] Secure token storage (Expo SecureStore)
-
-### Triage engine
-- [ ] Claude API client setup (`packages/shared/lib/claude.ts`)
-- [ ] Hardcoded red-flag rules layer (runs before AI, can never be overridden)
-- [ ] Triage session model in DB
-- [ ] `POST /triage/start`
-- [ ] `POST /triage/answer`
-- [ ] `GET /triage/result/:sessionId`
-- [ ] Consumer triage UI — conversational flow screen
-- [ ] Triage result screen — care level + explanation + CTA to find provider
-- [ ] Medical disclaimer screen shown on first use (stored to DB)
+### Growth
+- [ ] Referral program for patients
+- [ ] Clinic referral program
+- [ ] NHIS integration (National Health Insurance Scheme)
+- [ ] Hospital partnerships (Lagos State, FCT)
+- [ ] API access tier for third-party health apps (developer program)
+- [ ] Telemedicine integration (video consultation layer)
 
 ---
 
-## Phase 2 — Provider Directory + Booking (Week 6–8)
-
-### Provider data
-- [ ] Full Prisma schema for providers, appointments, reviews
-- [ ] Manual seed: 30 providers in launch city (Abuja)
-- [ ] `GET /providers` — search with lat/lng, speciality, type filters
-- [ ] `GET /providers/:id`
-- [ ] Provider trust score calculation service (weighted: repeat visits, reviews, response time)
-
-### Booking flow
-- [ ] `POST /providers/:id/book`
-- [ ] `GET /appointments` (consumer)
-- [ ] `PATCH /appointments/:id/cancel`
-- [ ] Consumer UI — provider search + map view
-- [ ] Consumer UI — provider profile page
-- [ ] Consumer UI — booking flow (date/time picker, type selector)
-- [ ] Consumer UI — appointments list
-
-### Reviews
-- [ ] `POST /appointments/:id/review`
-- [ ] Review only allowed after appointment status = `completed`
-- [ ] Trust score recalculation job triggered on new review
-- [ ] Consumer UI — post-visit review form
-
-### Notifications
-- [ ] Twilio SMS client setup
-- [ ] Expo Push notification setup
-- [ ] BullMQ + Redis queue setup
-- [ ] Appointment confirmation SMS
-- [ ] 24h reminder job
-- [ ] 1h reminder job
-
----
-
-## Phase 3 — Medication Finder (Week 9–10)
-
-### Medication data
-- [ ] Medications table seeded (top 200 common drugs in Nigeria)
-- [ ] Pharmacy stock table
-- [ ] Manual onboard 10 pharmacies in Abuja with stock data
-- [ ] `GET /medications/search`
-- [ ] `GET /medications/:id/stock` — nearby pharmacies with stock + price
-- [ ] Stock staleness logic — flag results older than 48h
-
-### Prescription scanner
-- [ ] Google Vision API client
-- [ ] `POST /medications/scan` — upload image, OCR, extract drug names
-- [ ] Consumer UI — medication search screen
-- [ ] Consumer UI — pharmacy results map + list
-- [ ] Consumer UI — prescription scanner (camera + upload)
-
-### Crowdsource confirmations
-- [ ] `PATCH /medications/stock/:id/confirm` — "still in stock"
-- [ ] Last-verified timestamp shown in UI
-- [ ] BullMQ job to sync and aggregate confirmations every 30 min
-
----
-
-## Phase 4 — Hospital Portal: Core (Week 11–13)
-
-### Hospital auth + onboarding
-- [ ] Hospital registration flow (admin creates account, provides license)
-- [ ] Staff invitation system (admin invites staff by email + role)
-- [ ] Hospital portal React app scaffold (Vite + React Router + Zustand)
-- [ ] Login + role-based dashboard routing
-
-### Appointment management
-- [ ] `GET /hospital/appointments`
-- [ ] `PATCH /hospital/appointments/:id/confirm`
-- [ ] `PATCH /hospital/appointments/:id/complete`
-- [ ] Hospital UI — appointment calendar (day/week view)
-- [ ] Hospital UI — appointment detail panel
-- [ ] Real-time update when consumer books (WebSocket)
-
-### Patient directory
-- [ ] `GET /hospital/patients`
-- [ ] `GET /hospital/patients/:id`
-- [ ] Hospital UI — patient list with search
-- [ ] Hospital UI — patient profile
-
----
-
-## Phase 5 — Hospital Portal: EMR + Wards (Week 14–16)
-
-### EMR
-- [ ] Full EMR Prisma schema
-- [ ] `GET /hospital/patients/:id/emr`
-- [ ] `POST /hospital/patients/:id/emr`
-- [ ] `PUT /hospital/patients/:id/emr/:recordId`
-- [ ] Hospital UI — EMR form (chief complaint, diagnosis, treatment plan, prescriptions, vitals)
-- [ ] When prescription added to EMR → push to consumer's health history
-- [ ] Consumer UI — health history screen showing EMR prescriptions
-
-### Ward management
-- [ ] Wards + admissions Prisma schema
-- [ ] `GET /hospital/wards`
-- [ ] `POST /hospital/admissions`
-- [ ] `PATCH /hospital/admissions/:id/discharge`
-- [ ] Hospital UI — ward overview (live bed count per ward)
-- [ ] Hospital UI — admission form
-- [ ] Hospital UI — discharge flow
-- [ ] Real-time bed count via WebSocket
-
----
-
-## Phase 6 — Hospital Portal: Pharmacy, Lab, Billing (Week 17–20)
-
-### Pharmacy / inventory
-- [ ] `GET /hospital/pharmacy/stock`
-- [ ] `POST /hospital/pharmacy/stock`
-- [ ] `PATCH /hospital/pharmacy/stock/:id`
-- [ ] Low-stock alert job (threshold configurable per hospital)
-- [ ] Hospital UI — pharmacy stock table (search, filter by category)
-- [ ] Hospital UI — add/edit stock form
-- [ ] Hospital UI — low-stock alerts panel
-- [ ] Hospital pharmacy stock feeds into consumer medication finder (opt-in)
-
-### Lab results
-- [ ] Lab requests Prisma schema
-- [ ] `GET /hospital/lab/requests`
-- [ ] `POST /hospital/lab/requests`
-- [ ] `PATCH /hospital/lab/requests/:id/result` — upload PDF to S3
-- [ ] Auto-notification to patient on result upload
-- [ ] Consumer UI — lab results screen (view + download PDF)
-- [ ] Hospital UI — lab request queue
-- [ ] Hospital UI — result upload form
-
-### Billing
-- [ ] Invoices Prisma schema
-- [ ] `GET /hospital/billing/invoices`
-- [ ] `POST /hospital/billing/invoices`
-- [ ] `PATCH /hospital/billing/invoices/:id/status`
-- [ ] Hospital UI — invoice list
-- [ ] Hospital UI — invoice builder (line items, total)
-- [ ] Hospital UI — insurance claim tracking column
-- [ ] Consumer UI — my invoices + payment status
-
----
-
-## Phase 7 — Staff Scheduling (Week 21–22)
-
-- [ ] Shifts Prisma schema
-- [ ] `GET /hospital/staff/shifts`
-- [ ] `POST /hospital/staff/shifts`
-- [ ] `PATCH /hospital/staff/shifts/:id`
-- [ ] Shift swap request flow
-- [ ] Hospital UI — rota calendar (week view per department)
-- [ ] Hospital UI — shift creation modal
-- [ ] Hospital UI — swap request notifications
-- [ ] Staff can view own upcoming shifts
-
----
-
-## Phase 8 — Polish, Performance, Launch (Week 23–26)
-
-### Consumer app
-- [ ] Offline mode — checklists and health history cached locally
-- [ ] App icon + splash screen
-- [ ] Onboarding flow (3-screen intro)
-- [ ] Push notification deep linking
-- [ ] App Store + Play Store submission prep
-
-### Hospital dashboard
-- [ ] Analytics dashboard — appointments per day, avg wait time, bed occupancy %
-- [ ] Export reports (PDF invoices, staff rotas)
-- [ ] Print-friendly EMR view
-
-### Performance
-- [ ] API response caching (Redis) for provider search results
-- [ ] Database indexes on high-frequency query columns
-- [ ] Image optimisation for prescription uploads
-- [ ] Load testing (k6) — target: 500 concurrent users
-
-### Security
-- [ ] Penetration test on auth flows
-- [ ] Column-level encryption for EMR sensitive fields
-- [ ] S3 bucket policy audit (private buckets, signed URLs only)
-- [ ] Rate limiting on all public endpoints
-- [ ] NDPR compliance review
-
-### Launch
-- [ ] Onboard 50 providers in Abuja manually
-- [ ] Onboard 10 pharmacies with live stock
-- [ ] Onboard 3 pilot hospitals for HMS
-- [ ] Set up status page (statuspage.io or similar)
-- [ ] Error monitoring (Sentry)
-- [ ] Analytics (PostHog)
-- [ ] Soft launch to 100 beta users
-- [ ] Iterate on feedback for 2 weeks
-- [ ] Public launch
-
----
-
-## Backlog (Post-Launch)
-
-- [ ] Teleconsult video integration (Daily.co or Whereby API)
-- [ ] Insurance provider API integration
-- [ ] Multi-language support (Yoruba, Hausa, Igbo)
-- [ ] Expand to Lagos
-- [ ] Provider mobile app (instead of web dashboard for doctors on rounds)
-- [ ] AI assistant in consumer app ("Ask Healthbridge anything")
-- [ ] Referral system (doctor refers patient to specialist within platform)
-- [ ] Subscription tier for consumers (health history export, unlimited triage, priority booking)
-- [ ] B2B corporate wellness plan integration
+*Check tasks off as you go. Never mark a phase complete until all tasks in it are done and deployed.*

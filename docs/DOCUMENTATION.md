@@ -1,619 +1,793 @@
-# Healthbridge — Full Documentation
+# MedBridge — Developer Documentation
+
+> Complete setup guide, environment configuration, API reference, and contribution standards.
+
+---
 
 ## Table of Contents
 
-1. [Product Overview](#1-product-overview)
-2. [User Roles](#2-user-roles)
-3. [Consumer Portal — Features](#3-consumer-portal--features)
-4. [Hospital Portal — Features](#4-hospital-portal--features)
-5. [API Reference](#5-api-reference)
-6. [Data Models](#6-data-models)
-7. [AI Triage Engine](#7-ai-triage-engine)
-8. [Notification System](#8-notification-system)
-9. [File Handling](#9-file-handling)
-10. [Environment Variables](#10-environment-variables)
-11. [Error Handling](#11-error-handling)
-12. [Testing](#12-testing)
-13. [Contribution Guidelines](#13-contribution-guidelines)
+1. [Prerequisites](#prerequisites)
+2. [Environment Setup](#environment-setup)
+3. [Project Initialization](#project-initialization)
+4. [Service Configuration](#service-configuration)
+5. [Database Setup](#database-setup)
+6. [AI Service Setup](#ai-service-setup)
+7. [Running in Development](#running-in-development)
+8. [Environment Variables Reference](#environment-variables-reference)
+9. [API Reference](#api-reference)
+10. [Frontend Structure](#frontend-structure)
+11. [Authentication & Roles](#authentication--roles)
+12. [File Upload & Storage](#file-upload--storage)
+13. [AI Pipeline Guide](#ai-pipeline-guide)
+14. [Offline / USSD Layer](#offline--ussd-layer)
+15. [Testing](#testing)
+16. [Deployment](#deployment)
+17. [Code Standards](#code-standards)
+18. [Security Guidelines](#security-guidelines)
 
 ---
 
-## 1. Product Overview
+## Prerequisites
 
-Healthbridge is a unified healthcare platform with two portals sharing one backend:
+Ensure the following are installed before proceeding:
 
-**Consumer portal** — helps everyday users navigate healthcare from first symptom to medication. Core features: AI symptom triage, verified provider discovery, appointment booking, medication stock finder, prescription scanner, personal health history.
-
-**Hospital portal (HMS)** — gives hospitals and clinics a complete management system. Core features: EMR, appointment and ward management, pharmacy inventory, billing and insurance, staff shift scheduling, lab requests and results.
-
-The two portals are connected by shared data: a booking made in the consumer portal appears instantly in the hospital's appointment system; a prescription added to an EMR appears in the consumer's health history; a lab result uploaded by a lab technician sends an automatic notification to the patient.
-
----
-
-## 2. User Roles
-
-| Role | Portal | Description |
+| Tool | Version | Purpose |
 |---|---|---|
-| `consumer` | Consumer | Registered patient/user |
-| `hospital_admin` | Hospital | Full access to all hospital features, manages staff |
-| `doctor` | Hospital | EMR, appointments, lab requests, own schedule |
-| `nurse` | Hospital | Ward management, patient view, own schedule |
-| `pharmacist` | Hospital | Pharmacy stock management |
-| `lab_tech` | Hospital | Lab request queue, result upload |
-| `billing_officer` | Hospital | Invoice creation, insurance claims |
+| Node.js | 20.x LTS | Frontend and API runtime |
+| Python | 3.11+ | AI microservice |
+| pnpm | 8.x | Monorepo package manager |
+| Docker | 24.x | Local PostgreSQL and Redis |
+| Docker Compose | 2.x | Service orchestration |
+| Git | 2.x | Version control |
+
+Optional but recommended:
+- VS Code with ESLint, Prettier, and Prisma extensions
+- Postman or Bruno for API testing
+- TablePlus or DBeaver for database inspection
 
 ---
 
-## 3. Consumer Portal — Features
+## Environment Setup
 
-### 3.1 Symptom Triage
+### 1. Clone the repository
 
-The triage flow is a conversational AI session that determines the appropriate care level for the user's symptoms.
+```bash
+git clone https://github.com/your-org/medbridge.git
+cd medbridge
+```
 
-**Care levels returned:**
-- `self_care` — rest, hydration, OTC medication. No provider needed.
-- `gp` — book a general practitioner within 1–2 days.
-- `urgent_care` — see a doctor today. Book an urgent slot.
-- `emergency` — call emergency services or go to ER immediately.
+### 2. Install pnpm globally
 
-**How it works:**
-1. User starts a session (`POST /triage/start`)
-2. Claude asks 3–7 follow-up questions about symptoms, duration, severity, and context
-3. Each answer is submitted via `POST /triage/answer`
-4. When enough information is gathered, Claude returns a structured result
-5. The triage result is stored and used to filter provider recommendations
+```bash
+npm install -g pnpm
+```
 
-**Red flag rules (hardcoded, never AI-overridden):**
-Any of the following symptoms immediately return `emergency` regardless of context:
-- Chest pain radiating to arm, jaw, or back
-- Sudden severe headache ("worst headache of my life")
-- Difficulty breathing or shortness of breath at rest
-- Sudden weakness or numbness on one side of the body
-- Sudden vision loss or double vision
-- Loss of consciousness or confusion
-- Signs of anaphylaxis (throat swelling, hives, dizziness after exposure)
-- Uncontrolled bleeding
-- Suspected overdose
+### 3. Install all workspace dependencies
 
-**Disclaimer:** Triage output is care-level guidance only, never a medical diagnosis. Users acknowledge this at account creation.
+```bash
+pnpm install
+```
 
-### 3.2 Provider Directory
+### 4. Set up environment files
 
-Providers are doctors, general practitioners, and specialists listed on the platform. Each provider is linked to one or more hospitals.
+```bash
+# Root env (shared secrets)
+cp .env.example .env
 
-**Trust score** is a weighted composite of:
-- Repeat visits (same user books again): 35%
-- Verified review rating: 30%
-- Referral rate (other providers refer to them): 20%
-- Response/confirmation time: 15%
+# Web frontend
+cp apps/web/.env.example apps/web/.env.local
 
-Score is recalculated asynchronously after each review or booking event.
+# API gateway
+cp apps/api/.env.example apps/api/.env
 
-**Search filters:** speciality, location radius, consultation type (in-person/teleconsult), consultation fee range, language, availability.
+# AI microservice
+cp apps/ai-service/.env.example apps/ai-service/.env
+```
 
-### 3.3 Appointment Booking
-
-Consumers book appointments through provider profiles. Booking requires:
-- Selected date/time slot
-- Appointment type (in-person or teleconsult)
-- Optional: triage session ID (pre-fills reason for visit)
-
-On booking, the hospital portal receives a real-time WebSocket event and the appointment appears in their system with status `pending`. Hospital staff confirm it (status → `confirmed`). Consumer receives SMS + push confirmation.
-
-**Cancellation:** Consumer can cancel up to 2 hours before appointment time. Hospital can cancel at any time with a mandatory reason.
-
-### 3.4 Reviews
-
-Reviews are unlocked only after an appointment reaches `completed` status. This prevents fake or pre-visit reviews.
-
-Review fields:
-- Overall rating (1–5 stars)
-- Did they listen to you? (boolean)
-- Was the visit rushed? (boolean)
-- Was the diagnosis/advice helpful? (boolean)
-- Free-text comment (optional, max 500 chars)
-
-Reviews are public on the provider's profile. The free-text comment is moderated (profanity filter + manual review queue for flagged items).
-
-### 3.5 Medication Finder
-
-**Search** accepts brand name or generic name (partial match). Returns matching medications with pharmacy stock results sorted by distance.
-
-**Stock results** show per pharmacy:
-- Distance from user
-- Current price (and generic alternative price if available)
-- Last verified timestamp
-- "Still in stock?" confirmation button (crowdsource)
-
-**Prescription scanner:** User photos a handwritten or printed prescription. Google Vision API extracts text. The system identifies medication names, dosages, and quantities using a regex + named entity approach. Results auto-populate the search. Raw extracted text is shown so user can verify before searching.
-
-### 3.6 Health History
-
-Personal timeline of:
-- Completed triage sessions (date, care level, care category)
-- Completed appointments (date, provider, hospital)
-- EMR prescriptions shared by hospitals (drug, dosage, duration)
-- Lab results (test name, date, download link)
-- Medication searches (for quick re-search)
-
-Health history is private to the consumer. Sharing with a provider requires explicit user action (generates a one-time access link).
+Fill in all required variables before proceeding. See [Environment Variables Reference](#environment-variables-reference).
 
 ---
 
-## 4. Hospital Portal — Features
+## Project Initialization
 
-### 4.1 Appointment Management
+### Start infrastructure services
 
-The hospital appointment view shows all bookings for the hospital, filterable by date, provider, and status.
+```bash
+# Start PostgreSQL and Redis via Docker
+docker-compose up -d
 
-**Appointment lifecycle:**
-```
-pending → confirmed → completed
-                   → cancelled (by either party)
-```
-
-Confirmed appointments show in the provider's daily schedule. Completed appointments unlock EMR entry and consumer review.
-
-### 4.2 EMR (Electronic Medical Records)
-
-Each completed appointment can have an EMR record created by the attending doctor. EMR contains:
-- Chief complaint
-- Diagnosis (free text — not a structured code in MVP)
-- Treatment plan
-- Prescriptions (array: drug name, dosage, frequency, duration, notes)
-- Vitals (blood pressure, temperature, weight, height, pulse)
-- Follow-up instructions
-
-When a prescription is saved in an EMR, it is automatically pushed to the patient's consumer health history (if the patient has a Healthbridge consumer account linked to their hospital record).
-
-EMR records are immutable after 24 hours. Amendments after that require a new record with a reference to the original.
-
-### 4.3 Ward Management
-
-**Wards** are defined per hospital with a total bed count. The ward overview shows real-time occupied/available beds.
-
-**Admissions** link a patient to a ward and provider. Required fields: patient, ward, admitting doctor, admission reason. Optional: expected discharge date.
-
-**Discharge** marks the admission as complete, frees the bed, and prompts for a discharge summary.
-
-Bed availability is broadcast via WebSocket to all connected hospital staff dashboards.
-
-### 4.4 Pharmacy & Inventory
-
-Hospital pharmacists manage drug stock through a simple inventory interface.
-
-**Stock entry:** medication name (linked to medications table), quantity, unit price, expiry date, batch number.
-
-**Low-stock alerts:** Each medication can have a minimum threshold. A background job checks every 6 hours and sends in-app alerts to pharmacists when stock falls below threshold.
-
-**Consumer integration:** Hospitals can opt in to share their pharmacy stock with the consumer medication finder. Opted-in stock appears in consumer search results attributed to the hospital/clinic's name and address.
-
-### 4.5 Lab Requests & Results
-
-**Lab request flow:**
-1. Doctor creates a lab request linked to an appointment (`POST /hospital/lab/requests`)
-2. Lab technician sees the request in their queue
-3. Lab tech processes the test and uploads the result (PDF or image) to S3
-4. System sends push + SMS notification to patient
-5. Patient views and downloads result from consumer health history
-
-Result PDFs are stored in a private S3 bucket. Access is via signed URL with 1-hour expiry.
-
-### 4.6 Billing & Insurance
-
-**Invoice creation:** Billing officer creates an invoice linked to an appointment. Line items are freeform (consultation fee, tests, drugs, procedures). Total is auto-calculated.
-
-**Invoice statuses:**
-```
-draft → issued → paid
-              → insurance_submitted → settled
+# Verify services are running
+docker-compose ps
 ```
 
-**Insurance:** In MVP, insurance claim tracking is manual — the billing officer records the claim ID from their external insurance platform and updates the status. Full insurance API integration is a post-launch feature.
-
-Patients can view their own invoices in the consumer app (payment via external method in MVP — direct in-app payment is post-launch).
-
-### 4.7 Staff Scheduling
-
-**Shift creation:** Admin creates shifts for staff with start time, end time, and department. Shifts can be created individually or as recurring weekly patterns.
-
-**Shift swaps:** Staff can request a swap with a colleague. Both must confirm. Admin is notified and can reject if it creates a coverage gap.
-
-**Rota view:** Week-view calendar per department. Each column is a staff member, each row is a time slot. Colour-coded by status (scheduled, active, completed, swapped).
-
-Staff can view their own upcoming shifts from any device. Shift start reminder sent via SMS/push 1 hour before.
-
----
-
-## 5. API Reference
-
-### Base URL
+Expected output:
 ```
-Development: http://localhost:3000/api/v1
-Production:  https://api.healthbridge.app/api/v1
+NAME                STATUS          PORTS
+medbridge-db        running         0.0.0.0:5432->5432/tcp
+medbridge-redis     running         0.0.0.0:6379->6379/tcp
 ```
 
-### Authentication
-All protected endpoints require:
-```
-Authorization: Bearer <jwt_token>
-```
+### Set up the database
 
-### Response format
-All responses follow this shape:
-```json
-{
-  "success": true,
-  "data": { ... },
-  "meta": { "page": 1, "total": 42 }   // pagination where applicable
-}
+```bash
+# Generate Prisma client
+pnpm db:generate
+
+# Run all migrations
+pnpm db:migrate
+
+# Seed development data (test users, sample records, drug DB snapshot)
+pnpm db:seed
 ```
 
-Error responses:
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "email is required",
-    "details": [ ... ]   // Zod validation details where applicable
-  }
-}
-```
+### Set up the Python AI service
 
-### Consumer Endpoints
+```bash
+cd apps/ai-service
 
-#### `POST /auth/register`
-```json
-// Request
-{
-  "email": "user@example.com",
-  "phone": "+2348012345678",
-  "full_name": "Amaka Obi",
-  "date_of_birth": "1990-05-14",
-  "gender": "female"
-}
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate       # On Windows: venv\Scripts\activate
 
-// Response 201
-{
-  "success": true,
-  "data": {
-    "user": { "id": "uuid", "email": "...", "full_name": "..." },
-    "token": "jwt_token"
-  }
-}
-```
+# Install dependencies
+pip install -r requirements.txt
 
-#### `POST /triage/start`
-```json
-// Request
-{ "initial_symptom": "I have a severe headache and feel nauseous" }
+# Download base medical embeddings (first-time only, ~2GB)
+python scripts/download_embeddings.py
 
-// Response 200
-{
-  "success": true,
-  "data": {
-    "session_id": "uuid",
-    "question": "How long have you had this headache?",
-    "options": ["Less than 1 hour", "1–6 hours", "More than 6 hours", "A few days"]
-  }
-}
-```
-
-#### `POST /triage/answer`
-```json
-// Request
-{
-  "session_id": "uuid",
-  "answer": "Less than 1 hour"
-}
-
-// Response 200 — more questions
-{
-  "success": true,
-  "data": {
-    "session_id": "uuid",
-    "question": "On a scale of 1–10, how severe is the pain?",
-    "options": null   // null means free text input
-  }
-}
-
-// Response 200 — result ready
-{
-  "success": true,
-  "data": {
-    "session_id": "uuid",
-    "result": {
-      "care_level": "urgent_care",
-      "care_category": "neurological",
-      "reasoning": "A sudden severe headache with nausea that started within the last hour warrants prompt medical attention today.",
-      "emergency": false
-    }
-  }
-}
-```
-
-#### `GET /providers?lat=9.0765&lng=7.3986&speciality=gp&radius=5000`
-```json
-// Response 200
-{
-  "success": true,
-  "data": [
-    {
-      "id": "uuid",
-      "full_name": "Dr. Chidi Okeke",
-      "speciality": "General Practitioner",
-      "hospital": { "id": "uuid", "name": "Garki General Hospital", "address": "..." },
-      "trust_score": 4.3,
-      "consultation_fee": 5000,
-      "distance_m": 1200,
-      "available_for_teleconsult": true,
-      "languages": ["English", "Igbo"],
-      "next_available_slot": "2026-03-15T09:00:00Z"
-    }
-  ],
-  "meta": { "total": 12, "page": 1 }
-}
-```
-
-#### `POST /providers/:id/book`
-```json
-// Request
-{
-  "scheduled_at": "2026-03-15T09:00:00Z",
-  "type": "in_person",
-  "triage_session_id": "uuid"   // optional
-}
-
-// Response 201
-{
-  "success": true,
-  "data": {
-    "appointment": {
-      "id": "uuid",
-      "status": "pending",
-      "scheduled_at": "2026-03-15T09:00:00Z",
-      "provider": { "full_name": "Dr. Chidi Okeke" },
-      "hospital": { "name": "Garki General Hospital", "address": "..." }
-    }
-  }
-}
-```
-
-#### `GET /medications/search?name=amoxicillin&lat=9.0765&lng=7.3986`
-```json
-// Response 200
-{
-  "success": true,
-  "data": {
-    "medication": {
-      "id": "uuid",
-      "name": "Amoxicillin",
-      "generic_name": "Amoxicillin trihydrate",
-      "requires_prescription": true
-    },
-    "stock": [
-      {
-        "pharmacy_id": "uuid",
-        "pharmacy_name": "HealthPlus Garki",
-        "address": "Plot 5, Garki Area 2",
-        "distance_m": 800,
-        "quantity": 120,
-        "unit_price": 350,
-        "last_verified_at": "2026-03-14T08:00:00Z",
-        "generic_available": true,
-        "generic_price": 150
-      }
-    ]
-  }
-}
+cd ../..
 ```
 
 ---
 
-## 6. Data Models
+## Service Configuration
 
-See `apps/api/prisma/schema.prisma` for the full Prisma schema. Key model relationships:
+### apps/web — Next.js Frontend
+
+- Framework: Next.js 14 with App Router
+- Styling: Tailwind CSS with custom MedBridge design tokens
+- State: Zustand for global state, React Query (TanStack) for server state
+- Forms: React Hook Form + Zod validation
+- Charts: Recharts for health dashboards
+
+Key configuration files:
+- `apps/web/next.config.js` — Next.js config, image domains, env exposure
+- `apps/web/tailwind.config.ts` — Custom color palette and typography
+- `apps/web/lib/api.ts` — Typed API client (wraps fetch with auth headers)
+
+### apps/api — Node.js API Gateway
+
+- Framework: Express with TypeScript
+- Auth: NextAuth.js sessions + JWT for service-to-service
+- Validation: Zod on all request bodies
+- Rate Limiting: express-rate-limit per user tier
+- Logging: Winston + structured JSON logs
+
+Key configuration files:
+- `apps/api/src/config/index.ts` — Centralized config from env
+- `apps/api/src/middleware/auth.ts` — Role-based auth middleware
+- `apps/api/src/middleware/safety.ts` — Emergency detection middleware
+
+### apps/ai-service — Python FastAPI
+
+- Framework: FastAPI with async support
+- LLM Orchestration: LangChain + custom pipeline classes
+- Embeddings: sentence-transformers with custom medical fine-tune
+- Document Parsing: PyMuPDF, pdfplumber, python-docx, Pillow (OCR via Tesseract)
+- Inference: Claude API (primary), Groq API (fallback)
+
+Key configuration files:
+- `apps/ai-service/config.py` — All settings via Pydantic BaseSettings
+- `apps/ai-service/pipelines/` — One pipeline class per module (documents, symptoms, copilot, drugs)
+- `apps/ai-service/agents/safety_agent.py` — Emergency detection logic (runs first on every input)
+
+---
+
+## Database Setup
+
+MedBridge uses PostgreSQL as the primary database managed via Prisma ORM.
+
+### Schema overview
 
 ```
-User (consumer)
-  └── Appointments (many)
-        └── EMR Records (one)
-        └── Reviews (one)
-        └── Lab Requests (many)
-        └── Invoices (one)
-
-Hospital
-  └── Staff (many)
-        └── Providers (doctors subset)
-  └── Wards (many)
-        └── Admissions (many)
-  └── Pharmacy Stock (many)
-
-Provider
-  └── Appointments (many)
+Users                 — patients, clinicians, clinic admins
+Clinics               — clinic profiles and settings
+Patients              — patient records linked to users or created by clinics
+HealthProfiles        — longitudinal health memory per patient
+Symptoms              — logged symptom sessions
+DocumentAnalyses      — uploaded document results
+ClinicalNotes         — AI-generated and clinician-edited notes
+DrugInteractionLogs   — queried drug combinations and results
+Appointments          — scheduling records
+Referrals             — referral network events
+AuditLogs             — all AI output events with context
 ```
 
----
+### Common database commands
 
-## 7. AI Triage Engine
+```bash
+# Open Prisma Studio (visual DB browser)
+pnpm db:studio
 
-See `ARCHITECTURE.md § AI Triage Engine` for full technical detail.
+# Create a new migration after schema changes
+pnpm db:migrate:dev --name describe_your_change
 
-**Key implementation file:** `apps/api/src/services/triage.service.ts`
+# Reset database (development only — destroys all data)
+pnpm db:reset
 
-**Testing the triage engine:** A set of scenario tests lives in `apps/api/src/__tests__/triage.test.ts`. Each test provides a symptom sequence and asserts the expected care level output. Red flag scenarios always assert `emergency` care level regardless of other context.
+# Push schema without migration (prototyping only)
+pnpm db:push
+```
 
-**Prompt versioning:** The Claude system prompt is versioned in `apps/api/src/lib/prompts/triage-v1.ts`. Any changes to the prompt require a new version file and a migration note documenting what changed and why.
+### Prisma schema location
 
----
+```
+packages/db/schema.prisma
+```
 
-## 8. Notification System
-
-Notifications are sent via two channels:
-- **SMS** (Twilio) — for all users, works on any phone
-- **Push** (Expo Push) — for users who have notifications enabled in the app
-
-**Notification events:**
-
-| Event | SMS | Push |
-|---|---|---|
-| Appointment confirmed | Yes | Yes |
-| Appointment reminder (24h) | Yes | Yes |
-| Appointment reminder (1h) | Yes | Yes |
-| Appointment cancelled | Yes | Yes |
-| Lab result ready | Yes | Yes |
-| Invoice issued | No | Yes |
-| Low stock alert (hospital) | No | Yes |
-
-All notification jobs are queued via BullMQ. Queue implementation: `apps/api/src/jobs/`.
+All models, relations, and enums are defined here. Any schema change requires a migration before the API can use the updated types.
 
 ---
 
-## 9. File Handling
+## AI Service Setup
 
-### Prescription images
-- Uploaded via `POST /medications/scan`
-- Stored in S3: `prescriptions/{user_id}/{timestamp}.{ext}`
-- Bucket is private — no public access
-- Deleted after 30 days (S3 lifecycle rule)
-- Max file size: 10MB
-- Accepted formats: JPEG, PNG, PDF
+### Pipeline architecture
 
-### Lab result PDFs
-- Uploaded via `PATCH /hospital/lab/requests/:id/result`
-- Stored in S3: `lab-results/{hospital_id}/{request_id}.pdf`
-- Access via signed URL (1-hour expiry)
-- Retained indefinitely (medical records)
-- Max file size: 25MB
+Each MedBridge feature has a dedicated pipeline:
+
+```
+pipelines/
+├── document_pipeline.py     # Document upload → parse → extract → explain
+├── symptom_pipeline.py      # Symptom input → safety check → scoring → output
+├── copilot_pipeline.py      # Patient history → summarize → differentials → notes
+├── drug_pipeline.py         # Drug query → interaction check → explanation
+└── surveillance_pipeline.py # Anonymized event aggregation → pattern detection
+```
+
+Every pipeline runs the safety agent first. No pipeline can return output until the safety agent has cleared the input or escalated it.
+
+### Safety agent logic
+
+```python
+# agents/safety_agent.py
+# Runs on every input regardless of pipeline
+
+EMERGENCY_PATTERNS = [
+    "chest pain", "difficulty breathing", "cannot breathe",
+    "unconscious", "seizure", "stroke symptoms", "severe bleeding",
+    "suicidal", "overdose", "poisoning", "severe allergic reaction",
+    # Extended list maintained separately in safety_patterns.json
+]
+
+async def check_safety(input_text: str) -> SafetyResult:
+    # Step 1: Pattern matching (fast, runs first)
+    # Step 2: LLM safety classification (slower, runs if pattern match uncertain)
+    # Step 3: Return SAFE / WARNING / EMERGENCY
+    # EMERGENCY short-circuits all other pipeline logic
+```
+
+### Adding a new AI pipeline
+
+1. Create `pipelines/your_pipeline.py` inheriting from `BasePipeline`
+2. Implement `async def run(self, input: YourInputModel) -> YourOutputModel`
+3. Register in `routers/your_router.py`
+4. Add integration tests in `tests/test_your_pipeline.py`
+5. Safety agent runs automatically — do not bypass it
+
+### Local model testing without API keys
+
+Set `USE_MOCK_LLM=true` in your `.env`. The mock returns deterministic fixture responses from `tests/fixtures/` — useful for frontend development and CI.
 
 ---
 
-## 10. Environment Variables
+## Running in Development
+
+### Start all services simultaneously
+
+```bash
+# From the project root
+pnpm dev
+```
+
+This runs:
+- `apps/web` on http://localhost:3000
+- `apps/api` on http://localhost:4000
+- `apps/ai-service` on http://localhost:8000
+
+### Start services individually
+
+```bash
+pnpm dev --filter=web           # Frontend only
+pnpm dev --filter=api           # API only
+pnpm dev --filter=ai-service    # AI service only
+```
+
+### Useful development URLs
+
+| URL | Description |
+|---|---|
+| http://localhost:3000 | Web application |
+| http://localhost:4000/health | API health check |
+| http://localhost:8000/docs | AI service Swagger UI |
+| http://localhost:8000/redoc | AI service ReDoc |
+| http://localhost:5555 | Prisma Studio (run `pnpm db:studio`) |
+
+---
+
+## Environment Variables Reference
+
+### Root `.env`
 
 ```env
 # Database
-DATABASE_URL=postgresql://user:password@localhost:5432/healthbridge
-DIRECT_URL=postgresql://user:password@localhost:5432/healthbridge   # Prisma migrations
-
-# Redis
+DATABASE_URL=postgresql://medbridge:password@localhost:5432/medbridge_dev
 REDIS_URL=redis://localhost:6379
 
-# Auth
-JWT_SECRET=minimum_32_char_secret_here
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# Secrets
+NEXTAUTH_SECRET=your-secret-here-min-32-chars
+JWT_SERVICE_SECRET=your-service-jwt-secret
 
-# AI
+# AI Services
 ANTHROPIC_API_KEY=sk-ant-...
+GROQ_API_KEY=gsk_...
 
-# Maps
-GOOGLE_MAPS_API_KEY=AIza...
+# File Storage
+R2_ACCOUNT_ID=your-cloudflare-account-id
+R2_ACCESS_KEY_ID=your-r2-access-key
+R2_SECRET_ACCESS_KEY=your-r2-secret
+R2_BUCKET_NAME=medbridge-documents
 
-# OCR
-GOOGLE_VISION_API_KEY=AIza...
+# SMS / USSD (Africa's Talking)
+AT_API_KEY=your-africastalking-key
+AT_USERNAME=sandbox
+AT_SENDER_ID=MedBridge
 
-# SMS
-TWILIO_ACCOUNT_SID=AC...
-TWILIO_AUTH_TOKEN=...
-TWILIO_FROM_NUMBER=+1234567890
-
-# File storage
-AWS_REGION=eu-west-1
-AWS_ACCESS_KEY_ID=AKIA...
-AWS_SECRET_ACCESS_KEY=...
-AWS_S3_BUCKET=healthbridge-uploads
-
-# App
+# Environment
 NODE_ENV=development
-PORT=3000
-CONSUMER_APP_URL=http://localhost:8081
-HOSPITAL_APP_URL=http://localhost:3001
+LOG_LEVEL=debug
+```
+
+### `apps/web/.env.local`
+
+```env
+NEXTAUTH_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_APP_NAME=MedBridge
+NEXT_PUBLIC_ENVIRONMENT=development
+```
+
+### `apps/api/.env`
+
+```env
+PORT=4000
+AI_SERVICE_URL=http://localhost:8000
+ALLOWED_ORIGINS=http://localhost:3000
+MAX_FILE_SIZE_MB=25
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_FREE=10
+RATE_LIMIT_MAX_PAID=100
+```
+
+### `apps/ai-service/.env`
+
+```env
+PORT=8000
+ANTHROPIC_API_KEY=sk-ant-...
+GROQ_API_KEY=gsk_...
+USE_MOCK_LLM=false
+EMBEDDINGS_PATH=./data/embeddings
+DRUG_DB_PATH=./data/nafdac_drugs.json
+SAFETY_PATTERNS_PATH=./data/safety_patterns.json
+MAX_DOCUMENT_PAGES=50
+ENABLE_SURVEILLANCE=true
 ```
 
 ---
 
-## 11. Error Handling
+## API Reference
 
-### Error codes
+Base URL: `http://localhost:4000/api/v1`
 
-| Code | HTTP | Description |
+All protected endpoints require `Authorization: Bearer <token>` header.
+
+### Authentication
+
+| Method | Endpoint | Description |
 |---|---|---|
-| `VALIDATION_ERROR` | 400 | Request body failed Zod validation |
-| `UNAUTHORIZED` | 401 | Missing or invalid JWT |
-| `FORBIDDEN` | 403 | Valid JWT but insufficient role |
-| `NOT_FOUND` | 404 | Resource does not exist |
-| `CONFLICT` | 409 | Duplicate resource (e.g. existing booking for same slot) |
-| `TRIAGE_RED_FLAG` | 200 | Red flag detected — emergency care level returned |
-| `RATE_LIMITED` | 429 | Too many requests |
-| `INTERNAL_ERROR` | 500 | Unexpected server error |
+| POST | `/auth/register` | Register new user |
+| POST | `/auth/login` | Login, returns session token |
+| POST | `/auth/logout` | Invalidate session |
+| GET | `/auth/me` | Get current user profile |
+| POST | `/auth/refresh` | Refresh access token |
 
-### Triage-specific errors
+### Document Analysis
 
-The triage engine never returns a 4xx or 5xx for safety-critical scenarios. If the AI service is unavailable, the system falls back to a static decision tree covering the 20 most common symptom categories. This fallback is logged and alerted to the on-call team.
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| POST | `/documents/upload` | Upload and analyze medical document | Required |
+| GET | `/documents` | List user's document analyses | Required |
+| GET | `/documents/:id` | Get single analysis result | Required |
+| DELETE | `/documents/:id` | Delete document and analysis | Required |
+
+Request (POST `/documents/upload`):
+```json
+{
+  "file": "<multipart/form-data>",
+  "document_type": "lab_result | prescription | report | nhis_form | other",
+  "notes": "Optional context from user"
+}
+```
+
+Response:
+```json
+{
+  "id": "doc_01h...",
+  "status": "complete",
+  "document_type": "lab_result",
+  "findings": [
+    {
+      "field": "Haemoglobin",
+      "value": "9.2 g/dL",
+      "normal_range": "12.0–17.5 g/dL",
+      "flag": "LOW",
+      "explanation": "Your haemoglobin is below the normal range, which may indicate anaemia. This should be discussed with your doctor."
+    }
+  ],
+  "summary": "Plain English summary of the document...",
+  "risk_flags": ["Low haemoglobin", "Elevated white cell count"],
+  "recommended_action": "CONSULT_DOCTOR",
+  "ai_disclaimer": "This analysis is AI-generated and is not a medical diagnosis.",
+  "created_at": "2025-03-20T10:00:00Z"
+}
+```
+
+### Symptom Checker
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| POST | `/symptoms/check` | Submit symptom session | Optional |
+| GET | `/symptoms/history` | Get user's symptom history | Required |
+
+Request (POST `/symptoms/check`):
+```json
+{
+  "symptoms": ["fever", "headache", "chills", "body aches"],
+  "duration_days": 3,
+  "severity": "moderate",
+  "location": "Lagos, Nigeria",
+  "age": 28,
+  "sex": "female",
+  "known_conditions": ["sickle cell trait"],
+  "current_medications": []
+}
+```
+
+Response:
+```json
+{
+  "session_id": "sym_01h...",
+  "safety_status": "SAFE",
+  "emergency_detected": false,
+  "possible_conditions": [
+    {
+      "category": "Malaria",
+      "probability_range": "High",
+      "reasoning": "Fever with chills and body aches in Lagos context is consistent with malaria presentation."
+    },
+    {
+      "category": "Typhoid fever",
+      "probability_range": "Moderate",
+      "reasoning": "Sustained fever with headache may indicate typhoid, especially given regional prevalence."
+    }
+  ],
+  "severity_score": 6,
+  "urgency": "SEE_DOCTOR_TODAY",
+  "next_steps": [
+    "Visit a clinic for a malaria rapid test and full blood count",
+    "Stay hydrated and rest",
+    "Avoid self-medicating with antimalarials before confirmed test"
+  ],
+  "ai_disclaimer": "These are possible condition categories, not diagnoses. See a qualified doctor."
+}
+```
+
+### Doctor Copilot
+
+| Method | Endpoint | Description | Auth | Role |
+|---|---|---|---|---|
+| POST | `/copilot/summarize` | Summarize patient history | Required | CLINICIAN |
+| POST | `/copilot/differentials` | Get differential suggestions | Required | CLINICIAN |
+| POST | `/copilot/notes` | Generate clinical note | Required | CLINICIAN |
+| POST | `/copilot/note/voice` | Transcribe and structure voice note | Required | CLINICIAN |
+
+### Drug Intelligence
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| GET | `/drugs/search` | Search drug database | Optional |
+| POST | `/drugs/interactions` | Check drug-drug interactions | Optional |
+| GET | `/drugs/:id` | Get drug details | Optional |
+
+### Clinic OS
+
+| Method | Endpoint | Description | Auth | Role |
+|---|---|---|---|---|
+| GET | `/clinic/patients` | List all clinic patients | Required | CLINIC_STAFF |
+| POST | `/clinic/patients` | Create patient record | Required | CLINIC_STAFF |
+| GET | `/clinic/patients/:id` | Get patient record | Required | CLINIC_STAFF |
+| PUT | `/clinic/patients/:id` | Update patient record | Required | CLINIC_STAFF |
+| GET | `/clinic/appointments` | List appointments | Required | CLINIC_STAFF |
+| POST | `/clinic/appointments` | Create appointment | Required | CLINIC_STAFF |
+| POST | `/clinic/referrals` | Create referral | Required | CLINIC_STAFF |
+| GET | `/clinic/analytics` | Clinic usage analytics | Required | CLINIC_ADMIN |
 
 ---
 
-## 12. Testing
+## Frontend Structure
+
+```
+apps/web/app/
+├── (marketing)/
+│   ├── page.tsx              # Landing page
+│   ├── pricing/page.tsx      # Pricing page
+│   ├── about/page.tsx        # About MedBridge
+│   └── contact/page.tsx      # Contact page
+├── (auth)/
+│   ├── login/page.tsx
+│   ├── register/page.tsx
+│   └── onboarding/page.tsx   # Role selection + profile setup
+├── (patient)/
+│   ├── dashboard/page.tsx    # Patient home
+│   ├── symptoms/page.tsx     # Symptom checker
+│   ├── documents/page.tsx    # Document upload and history
+│   ├── drugs/page.tsx        # Drug checker
+│   └── profile/page.tsx      # Health profile
+├── (clinician)/
+│   ├── dashboard/page.tsx    # Doctor home
+│   ├── copilot/page.tsx      # AI copilot interface
+│   ├── patients/page.tsx     # Patient list
+│   └── notes/page.tsx        # Clinical notes
+└── (clinic)/
+    ├── dashboard/page.tsx    # Clinic overview
+    ├── patients/page.tsx     # Patient records
+    ├── appointments/page.tsx # Scheduling
+    ├── referrals/page.tsx    # Referral management
+    └── analytics/page.tsx    # Usage and health reports
+```
+
+### Shared components
+
+```
+packages/ui/components/
+├── medical/
+│   ├── SymptomInput.tsx        # Conversational symptom entry
+│   ├── DocumentUploader.tsx    # Drag-drop with type detection
+│   ├── RiskBadge.tsx           # Color-coded risk level display
+│   ├── EmergencyBanner.tsx     # Full-screen emergency alert
+│   ├── AIDisclaimer.tsx        # Consistent disclaimer footer
+│   └── FindingCard.tsx         # Lab finding display card
+├── layout/
+│   ├── PatientShell.tsx
+│   ├── ClinicianShell.tsx
+│   └── ClinicShell.tsx
+└── common/
+    ├── LoadingPulse.tsx
+    ├── ErrorBoundary.tsx
+    └── OfflineBanner.tsx
+```
+
+---
+
+## Authentication & Roles
+
+MedBridge uses NextAuth.js with four primary roles:
+
+| Role | Access |
+|---|---|
+| `PATIENT` | Symptom checker, document analyzer, drug checker, health profile |
+| `CLINICIAN` | All patient features + Doctor Copilot, clinical notes, referral send |
+| `CLINIC_STAFF` | Clinic OS — patient records, appointments, referrals |
+| `CLINIC_ADMIN` | All staff features + analytics, billing, user management |
+| `SUPER_ADMIN` | Platform administration, surveillance dashboard |
+
+Role is set at registration and can be elevated by a CLINIC_ADMIN or SUPER_ADMIN. Clinician accounts require verification (license number validation flow).
+
+---
+
+## File Upload & Storage
+
+All uploaded medical documents are handled through a secure upload pipeline:
+
+1. Frontend requests a pre-signed upload URL from the API
+2. File is uploaded directly from the browser to Cloudflare R2 (never through the API server)
+3. API receives upload confirmation with the R2 object key
+4. API queues the document for AI processing via the ai-service
+5. Processed results are stored in PostgreSQL; original file stays in R2
+6. Files are encrypted at rest using AES-256 (managed by Cloudflare)
+7. Access requires a short-lived signed URL generated per request
+
+Maximum file size: 25MB. Supported types: PDF, PNG, JPG, DOCX.
+
+---
+
+## AI Pipeline Guide
+
+### How to add a new feature with AI
+
+1. Define your input/output models in `apps/ai-service/models/your_feature.py`
+2. Create a pipeline in `apps/ai-service/pipelines/your_feature_pipeline.py`
+3. The safety agent is called automatically in `BasePipeline.run()` — never skip it
+4. Write your prompt templates in `apps/ai-service/prompts/your_feature/`
+5. Add an API router in `apps/ai-service/routers/your_feature.py`
+6. Add a corresponding API route in `apps/api/src/routes/your-feature.ts`
+7. Add a frontend page or component in `apps/web/app/`
+8. Write tests before shipping
+
+### Prompt engineering standards
+
+- Always include the safety disclaimer instruction in every system prompt
+- Always specify the response format explicitly (JSON schema)
+- Always include the African medical context instruction
+- Never allow the model to present output as a confirmed diagnosis
+- Include few-shot examples in prompts for clinical features
+
+---
+
+## Offline / USSD Layer
+
+MedBridge supports low-connectivity users through two mechanisms:
+
+### Progressive Web App (offline mode)
+
+- Service workers cache the symptom checker and drug search
+- IndexedDB stores the last 10 document analyses locally
+- Sync happens automatically when connection is restored
+- Offline banner shown clearly when operating without connection
+
+### USSD / SMS integration (Africa's Talking)
+
+USSD shortcode: `*384*MEDBRIDGE#` (placeholder — register with telecoms)
+
+```
+Main Menu:
+1. Check symptoms
+2. Drug information
+3. Find nearest clinic
+4. Emergency contacts
+
+Symptom Check (USSD):
+→ Enter main symptom as text
+→ AI responds with severity level and next steps
+→ Emergency detected → sends SMS with nearest emergency clinic
+```
+
+USSD handler: `apps/api/src/routes/ussd.ts`
+SMS handler: `apps/api/src/services/sms.service.ts`
+
+---
+
+## Testing
+
+### Run all tests
 
 ```bash
-# Run all tests
 pnpm test
-
-# Run tests for a specific workspace
-pnpm --filter api test
-pnpm --filter consumer test
-
-# Run with coverage
-pnpm --filter api test:coverage
 ```
 
-### Test structure
+### Run tests per service
 
-```
-apps/api/src/__tests__/
-  triage.test.ts         # Triage engine scenarios (unit)
-  auth.test.ts           # Auth flows (integration)
-  providers.test.ts      # Provider search + booking (integration)
-  medications.test.ts    # Stock search (integration)
-  hospital/
-    appointments.test.ts
-    emr.test.ts
-    billing.test.ts
+```bash
+pnpm test --filter=web          # Frontend unit + component tests
+pnpm test --filter=api          # API integration tests
+pnpm test --filter=ai-service   # Python pytest
 ```
 
-Integration tests use a separate test database (configured via `TEST_DATABASE_URL`). The test database is reset before each test suite run.
+### Test coverage
+
+```bash
+pnpm test:coverage
+```
+
+### Critical test requirements
+
+- Every AI pipeline must have integration tests with mock LLM responses
+- The safety agent must have 100% test coverage — no exceptions
+- Emergency detection paths must be tested with all emergency pattern variants
+- All API routes must have authentication and authorization tests
+- Document parsing must be tested against real Nigerian medical document fixtures
 
 ---
 
-## 13. Contribution Guidelines
+## Deployment
 
-### Branching strategy
+### Production environment
 
+| Service | Platform |
+|---|---|
+| Frontend | Vercel |
+| API Gateway | Railway |
+| AI Service | Railway (or Render) |
+| Database | Supabase (managed PostgreSQL) |
+| Cache | Upstash (managed Redis) |
+| File Storage | Cloudflare R2 |
+| CDN | Cloudflare |
+
+### Deploy via GitHub Actions
+
+Push to `main` triggers:
+1. Test suite (all services)
+2. Build and type check
+3. Database migration (auto on staging, manual approval on production)
+4. Deploy frontend to Vercel
+5. Deploy API and AI service to Railway
+6. Smoke tests on production endpoints
+
+### Manual deployment
+
+```bash
+# Build all services
+pnpm build
+
+# Run database migrations on production
+pnpm db:migrate:prod
+
+# Deploy frontend
+vercel deploy --prod
+
+# Deploy API (Railway CLI)
+railway up --service api
+
+# Deploy AI service
+railway up --service ai-service
 ```
-main           → production
-staging        → staging environment (auto-deploy on merge)
-feat/xyz       → new features (branch from main)
-fix/xyz        → bug fixes (branch from main)
-```
 
-### PR requirements
-- All tests pass (CI enforced)
-- No TypeScript errors
-- ESLint passes with zero warnings
-- PR description includes: what changed, why, how to test
-- For triage prompt changes: include before/after output comparison for 5 test scenarios
+---
 
-### Commit format
+## Code Standards
 
-```
-feat: add prescription OCR endpoint
-fix: correct trust score calculation on first review
-docs: update triage engine documentation
-chore: upgrade Claude API client to latest version
-```
+### TypeScript
 
-### Medical content changes
+- Strict mode enabled across all packages
+- No `any` types — use `unknown` and narrow with guards
+- All API responses typed via shared `packages/types`
+- Zod schemas for all external input validation
 
-Any change that affects triage logic, red-flag rules, or medical disclaimer copy requires review from a medically-qualified advisor before merge. Tag `@medical-review` in the PR.
+### Python
+
+- Type hints required on all functions
+- Pydantic models for all request/response shapes
+- Async everywhere — no blocking calls in route handlers
+- Black formatting + isort imports
+
+### Git workflow
+
+- Branch from `develop` for all features
+- Branch naming: `feature/short-description`, `fix/short-description`
+- Pull requests require one approval + passing CI before merge
+- Commit messages follow Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`
+
+### AI output standards
+
+- Every AI output object must include an `ai_disclaimer` field
+- Severity and urgency fields must use enum values, never free text
+- Clinical outputs must include a `confidence_level` field
+- All outputs must be auditable — every AI call logged to AuditLogs
+
+---
+
+## Security Guidelines
+
+- Never log PHI (protected health information) — mask or omit patient identifiers in all logs
+- All patient data encrypted at rest (AES-256) and in transit (TLS 1.3)
+- File access via signed URLs only — never expose direct storage paths
+- Rate limiting on all endpoints — stricter limits for unauthenticated requests
+- NDPR compliance: users can request data export and deletion at any time
+- Security headers configured in Next.js and Express (Helmet.js)
+- SQL injection protected by Prisma's parameterized queries
+- Input sanitization on all user-provided text before AI processing
+- Audit log every clinical AI recommendation with timestamp, model version, and input hash
+- Penetration testing required before any production launch
+
+---
+
+*Last updated: March 2025 — MedBridge v1 Development Build*

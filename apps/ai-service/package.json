@@ -1,0 +1,11 @@
+{
+  "name": "@medbridge/ai-service",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "./venv/bin/uvicorn main:app --reload --port 8000",
+    "build": "echo 'No build step for Python'",
+    "start": "./venv/bin/uvicorn main:app --port 8000",
+    "lint": "./venv/bin/ruff check ."
+  }
+}
