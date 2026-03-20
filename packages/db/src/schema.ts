@@ -30,13 +30,23 @@ export const clinics = pgTable("clinics", {
 
 export const healthProfiles = pgTable("health_profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
   dob: date("dob"),
   gender: text("gender"),
+  phone: text("phone"),
+  state: text("state"),
+  lga: text("lga"),
   bloodGroup: text("blood_group"),
   genotype: text("genotype"),
-  allergies: text("allergies"),
-  chronicConditions: text("chronic_conditions"),
+  weight: text("weight"),
+  height: text("height"),
+  chronicConditions: text("chronic_conditions"), // JSON string array
+  allergies: text("allergies"), // JSON string array of objects
+  medications: text("medications"), // JSON string array of objects
+  familyHistory: text("family_history"), // JSON string array
+  emergencyName: text("emergency_name"),
+  emergencyPhone: text("emergency_phone"),
+  emergencyRelation: text("emergency_relation"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

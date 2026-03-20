@@ -193,8 +193,8 @@ function StepDetails({ role, onBack }: { role: Role; onBack: () => void }) {
       setLoading(false);
     } else {
       setError("");
-      // Success state: show OTP or redirect to check email
-      window.location.href = "/verify-email"; // Or wherever you handle post-signup
+      // Success state: redirect to verify page with email context
+      window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
     }
   };
 

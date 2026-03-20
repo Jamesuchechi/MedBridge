@@ -1,12 +1,14 @@
 "use client";
 
-import {
+import React, {
   useState, useEffect, useRef,
   createContext, useContext,
   type ReactNode,
 } from "react";
 import { useTheme } from "next-themes";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { DashboardHome } from "./DashboardHome";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type UserRole = "patient" | "doctor" | "clinic";
@@ -29,13 +31,12 @@ interface ShellCtx {
 const ShellContext = createContext<ShellCtx>({} as ShellCtx);
 export const useShell = () => useContext(ShellContext);
 
-// ─── Mock user (replace with Supabase session) ────────────────────────────────
-const MOCK_USER: User = {
-  name: "Emeka Okonkwo",
-  email: "emeka@example.com",
+const DEFAULT_USER: User = {
+  name: "Loading...",
+  email: "",
   role: "patient",
-  initials: "EO",
-  profileComplete: 68,
+  initials: "..",
+  profileComplete: 0,
 };
 
 // ─── Nav items per role ───────────────────────────────────────────────────────
@@ -43,7 +44,7 @@ interface NavItem {
   id: string;
   label: string;
   href: string;
-  icon: () => ReactNode;
+  icon: () => React.JSX.Element;
   badge?: string | number;
   roleGate?: UserRole[];
   dividerBefore?: boolean;
@@ -175,17 +176,6 @@ const Ic = {
       <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
     </svg>
   ),
-  Check: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12"/>
-    </svg>
-  ),
-  Clipboard: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-    </svg>
-  ),
 };
 
 // ─── Nav Config ───────────────────────────────────────────────────────────────
@@ -196,14 +186,6 @@ const ALL_NAV: NavItem[] = [
   { id: "drugs",     label: "Drug Intelligence",href: "/dashboard/drugs",     icon: Ic.Pill },
   { id: "community", label: "CommunityRx",      href: "/dashboard/community", icon: Ic.Map },
   { id: "profile",   label: "Health Profile",   href: "/dashboard/profile",   icon: Ic.User, dividerBefore: true },
-  // Doctor-only
-  { id: "copilot",   label: "Doctor Copilot",   href: "/dashboard/copilot",   icon: Ic.Stethoscope, badge: "New", roleGate: ["doctor"] },
-  { id: "referrals", label: "Referrals",         href: "/dashboard/referrals", icon: Ic.Clipboard, roleGate: ["doctor"] },
-  // Clinic-only
-  { id: "clinic",    label: "Clinic OS",         href: "/dashboard/clinic",    icon: Ic.Hospital, roleGate: ["clinic"] },
-  { id: "patients",  label: "Patients",          href: "/dashboard/patients",  icon: Ic.Users, roleGate: ["clinic"] },
-  { id: "pulse",     label: "MedBridge Pulse",   href: "/dashboard/pulse",     icon: Ic.BarChart, roleGate: ["clinic"] },
-  // All
   { id: "settings",  label: "Settings",          href: "/dashboard/settings",  icon: Ic.Settings, dividerBefore: true },
 ];
 
@@ -211,70 +193,69 @@ function navForRole(role: UserRole): NavItem[] {
   return ALL_NAV.filter(n => !n.roleGate || n.roleGate.includes(role));
 }
 
-// ─── Role badge colors ────────────────────────────────────────────────────────
 const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> = {
-  patient: { label: "Patient",     color: "#00e5a0", bg: "rgba(0,229,160,0.12)" },
-  doctor:  { label: "Doctor",      color: "#3d9bff", bg: "rgba(61,155,255,0.12)" },
-  clinic:  { label: "Clinic Admin",color: "#c77dff", bg: "rgba(199,125,255,0.12)" },
+  patient: { label: "Patient",     color: "var(--accent)",  bg: "rgba(0,229,160,0.12)" },
+  doctor:  { label: "Doctor",      color: "var(--accent2)", bg: "rgba(61,155,255,0.12)" },
+  clinic:  { label: "Clinic Admin",color: "var(--accent3)", bg: "rgba(199,125,255,0.12)" },
 };
 
-// ─── CSS ──────────────────────────────────────────────────────────────────────
+// ─── CSS (Integrated with Marketing Themes) ──────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@300;400;500&display=swap');
 
 :root {
-  --sidebar-w: 248px;
-  --sidebar-collapsed-w: 68px;
-  --topbar-h: 64px;
+  --sidebar-w: 260px;
+  --sidebar-collapsed-w: 72px;
+  --topbar-h: 68px;
   --bg:        #03050a;
   --bg2:       #080c14;
   --bg3:       #0d1220;
   --sidebar-bg:#060a12;
-  --glass:     rgba(255,255,255,0.035);
-  --glass-h:   rgba(255,255,255,0.06);
-  --border:    rgba(255,255,255,0.07);
-  --border-h:  rgba(255,255,255,0.14);
+  --glass:     rgba(255,255,255,0.04);
+  --glass-h:   rgba(255,255,255,0.08);
+  --border:    rgba(255,255,255,0.08);
+  --border-h:  rgba(255,255,255,0.16);
   --text:      #f0f4ff;
-  --text2:     rgba(240,244,255,0.48);
-  --text3:     rgba(240,244,255,0.22);
+  --text2:     rgba(240,244,255,0.55);
+  --text3:     rgba(240,244,255,0.3);
   --accent:    #00e5a0;
   --accent2:   #3d9bff;
   --accent3:   #c77dff;
   --danger:    #ff5c5c;
   --warn:      #ffb800;
-  --nav-active-bg:   rgba(0,229,160,0.09);
+  --nav-active-bg:   rgba(0,229,160,0.12);
   --nav-active-text: #00e5a0;
   --nav-active-bar:  #00e5a0;
-  --scrollbar: rgba(255,255,255,0.06);
-  --card-bg:   rgba(255,255,255,0.03);
-  --card-border: rgba(255,255,255,0.07);
+  --scrollbar: rgba(255,255,255,0.08);
+  --card-bg:   rgba(255,255,255,0.04);
+  --card-border: rgba(255,255,255,0.08);
   --topbar-bg: rgba(3,5,10,0.85);
 }
 
 [data-theme="light"] {
   --bg:        #f0f4f8;
-  --bg2:       #e8eef6;
-  --bg3:       #dfe8f2;
-  --sidebar-bg:#e4ecf5;
-  --glass:     rgba(255,255,255,0.65);
-  --glass-h:   rgba(255,255,255,0.85);
-  --border:    rgba(0,0,0,0.07);
-  --border-h:  rgba(0,150,100,0.22);
+  --bg2:       #e4ebf5;
+  --bg3:       #dbe4f0;
+  --sidebar-bg:#e4ebf5;
+  --glass:     rgba(255,255,255,0.7);
+  --glass-h:   rgba(255,255,255,0.9);
+  --border:    rgba(0,0,0,0.08);
+  --border-h:  rgba(0,168,112,0.3);
   --text:      #0d1117;
-  --text2:     rgba(13,17,23,0.52);
-  --text3:     rgba(13,17,23,0.28);
+  --text2:     rgba(13,17,23,0.6);
+  --text3:     rgba(13,17,23,0.35);
   --accent:    #00a870;
   --accent2:   #1a6fcc;
   --accent3:   #7c3aed;
   --danger:    #d93025;
   --warn:      #b57500;
-  --nav-active-bg:   rgba(0,168,112,0.1);
-  --nav-active-text: #007a52;
+  --nav-active-bg:   rgba(0,168,112,0.12);
+  --nav-active-text: #008f5d;
   --nav-active-bar:  #00a870;
-  --scrollbar: rgba(0,0,0,0.08);
-  --card-bg:   rgba(255,255,255,0.7);
-  --card-border: rgba(0,0,0,0.07);
-  --topbar-bg: rgba(240,244,248,0.88);
+  --scrollbar: rgba(0,0,0,0.1);
+  --card-bg:   rgba(255,255,255,0.8);
+  --card-border: rgba(0,0,0,0.08);
+  --topbar-bg: rgba(240,244,248,0.9);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -282,35 +263,24 @@ body {
   font-family: 'DM Sans', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.6;
-  transition: background .3s ease, color .3s ease;
   overflow: hidden;
+  transition: background .3s ease, color .3s ease;
 }
 a { text-decoration: none; color: inherit; }
 button { font-family: inherit; cursor: pointer; border: none; background: none; }
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 10px; }
 
 .shell {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
   grid-template-rows: var(--topbar-h) 1fr;
-  grid-template-areas:
-    "sidebar topbar"
-    "sidebar main";
+  grid-template-areas: "sidebar topbar" "sidebar main";
   height: 100vh;
   transition: grid-template-columns .3s cubic-bezier(.4,0,.2,1);
 }
 .shell.collapsed { grid-template-columns: var(--sidebar-collapsed-w) 1fr; }
 
-@media (max-width: 900px) {
-  .shell {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "topbar"
-      "main";
-  }
+@media (max-width: 1024px) {
+  .shell { grid-template-columns: 1fr; grid-template-areas: "topbar" "main"; }
 }
 
 .sidebar {
@@ -323,164 +293,197 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   z-index: 50;
   transition: width .3s cubic-bezier(.4,0,.2,1);
 }
-.shell.collapsed .sidebar { width: var(--sidebar-collapsed-w); }
-
-@media (max-width: 900px) {
-  .sidebar {
-    position: fixed;
-    top: 0; left: 0; bottom: 0;
-    width: var(--sidebar-w) !important;
-    transform: translateX(-100%);
-    z-index: 200;
+@media (max-width: 1024px) {
+  .sidebar { 
+    position: fixed; top: 0; left: 0; bottom: 0; 
+    width: var(--sidebar-w) !important; transform: translateX(-100%); 
+    z-index: 200; box-shadow: 4px 0 40px rgba(0,0,0,0.4);
+    visibility: hidden; pointer-events: none;
   }
-  .sidebar.mobile-open { transform: translateX(0); }
+  .sidebar.mobile-open { transform: translateX(0); visibility: visible; pointer-events: auto; }
 }
 
 .sidebar-backdrop {
-  display: none;
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-  z-index: 199; opacity: 0; pointer-events: none;
-  transition: opacity .3s ease;
+  display: none; position: fixed; inset: 0; 
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); 
+  z-index: 199; opacity: 0; pointer-events: none; transition: opacity .3s ease;
 }
-.sidebar-backdrop.visible { opacity: 1; pointer-events: auto; display: block; }
+@media (max-width: 1024px) { .sidebar-backdrop.visible { opacity: 1; pointer-events: auto; display: block; } }
 
-.sidebar-header {
-  height: var(--topbar-h);
-  padding: 0 16px;
-  display: flex; align-items: center; border-bottom: 1px solid var(--border);
-}
-
+.sidebar-header { height: var(--topbar-h); padding: 0 16px; display: flex; align-items: center; border-bottom: 1px solid var(--border); }
 .sidebar-logo { display: flex; align-items: center; gap: 10px; }
-.sidebar-logo-mark {
-  width: 32px; height: 32px; border-radius: 8px;
+.sidebar-logo-mark { 
+  width: 34px; height: 34px; border-radius: 9px;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 14px; color: #000;
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px; color: #000;
 }
 .sidebar-logo-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 17px; color: var(--text); }
 .sidebar-logo-name span { color: var(--accent); }
 .shell.collapsed .sidebar-logo-name { display: none; }
 
-.sidebar-user { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
-.sidebar-user-avatar {
+.sidebar-user { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.sidebar-user-avatar { 
   width: 36px; height: 36px; border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   display: flex; align-items: center; justify-content: center;
   font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: #000;
 }
-.shell.collapsed .sidebar-user-info { display: none; }
 .sidebar-user-name { font-size: 13px; font-weight: 700; }
-.sidebar-user-role { font-size: 10px; padding: 2px 6px; border-radius: 100px; margin-top: 2px; display: inline-block; font-family: 'DM Mono', monospace; }
+.sidebar-user-role { font-size: 10px; padding: 2px 7px; border-radius: 100px; font-family: 'DM Mono', monospace; font-weight: 600; text-transform: uppercase; }
 
 .sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
-.nav-divider { height: 1px; background: var(--border); margin: 8px 16px; }
-.nav-item {
-  display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 40px; margin: 1px 8px;
-  border-radius: 8px; color: var(--text2); font-size: 13.5px; transition: all .2s;
+.nav-item { 
+  display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 40px; margin: 1px 8px;
+  border-radius: 10px; color: var(--text2); font-size: 13.5px; transition: all .2s;
 }
 .nav-item:hover { background: var(--glass-h); color: var(--text); }
 .nav-item.active { background: var(--nav-active-bg); color: var(--nav-active-text); font-weight: 600; }
 .nav-item-icon svg { width: 18px; height: 18px; }
-.shell.collapsed .nav-item-label { display: none; }
-.nav-badge { font-size: 9px; padding: 1px 5px; border-radius: 100px; background: var(--accent); color: #000; font-weight: 700; }
 
-.sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
-.sidebar-logout { display: flex; align-items: center; gap: 10px; color: var(--text3); font-size: 13px; width: 100%; text-align: left; }
-.sidebar-logout:hover { color: var(--danger); }
-.shell.collapsed .sidebar-logout-label { display: none; }
+.sidebar-footer { padding: 10px 8px; border-top: 1px solid var(--border); }
+.sidebar-logout { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 38px; border-radius: 10px; color: var(--text3); font-size: 13px; transition: all .2s; width: 100%; border: none; background: transparent; }
+.sidebar-logout:hover { color: var(--danger); background: rgba(255, 92, 92, 0.08); }
+.sidebar-logout svg { width: 18px; height: 18px; flex-shrink: 0; }
 
-.topbar {
-  grid-area: topbar; height: var(--topbar-h); background: var(--topbar-bg);
+.topbar { 
+  grid-area: topbar; height: var(--topbar-h); background: var(--topbar-bg); 
   backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
+  display: flex; align-items: center; gap: 12px; padding: 0 20px; z-index: 40;
 }
-
-.topbar-left { display: flex; align-items: center; gap: 12px; }
-.topbar-hamburger { display: none; }
-@media (max-width: 900px) { .topbar-hamburger { display: block; } }
-
-.topbar-center { flex: 1; max-width: 400px; position: relative; }
-.topbar-search-input {
-  width: 100%; background: var(--glass); border: 1px solid var(--border);
-  border-radius: 10px; padding: 8px 12px 8px 36px; color: var(--text); outline: none;
+.sidebar-collapse-btn { 
+  width: 32px; height: 32px; border-radius: 9px; background: var(--glass); 
+  border: 1px solid var(--border); color: var(--text2); display: flex; align-items: center; justify-content: center;
 }
+@media (max-width: 1024px) { .sidebar-collapse-btn { display: none; } }
+
+.topbar-hamburger { 
+  width: 38px; height: 38px; border-radius: 11px; background: var(--glass); 
+  border: 1px solid var(--border); color: var(--text2); display: none; align-items: center; justify-content: center;
+}
+@media (max-width: 1024px) { .topbar-hamburger { display: flex; } }
+
+.topbar-search { position: relative; flex: 1; max-width: 360px; }
+@media (max-width: 600px) { .topbar-search { display: none; } }
+.topbar-search-input { width: 100%; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px 8px 36px; color: var(--text); outline: none; font-size: 14px; }
 .topbar-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); }
+.topbar-search-icon svg { width: 14px; height: 14px; }
 
-.topbar-right { display: flex; align-items: center; gap: 12px; }
-.topbar-icon-btn { width: 36px; height: 36px; border-radius: 10px; background: var(--glass); border: 1px solid var(--border); color: var(--text2); display: flex; align-items: center; justify-content: center; }
-.topbar-icon-btn:hover { border-color: var(--border-h); }
+.topbar-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.topbar-icon-btn { width: 38px; height: 38px; border-radius: 11px; background: var(--glass); border: 1px solid var(--border); color: var(--text2); display: flex; align-items: center; justify-content: center; }
+.topbar-icon-btn svg { width: 18px; height: 18px; }
 
-.main-content { grid-area: main; overflow-y: auto; background: var(--bg); }
+.main-content { grid-area: main; overflow-y: auto; background: var(--bg); padding-bottom: 100px; }
 .main-content-inner { padding: 32px; max-width: 1200px; margin: 0 auto; }
+@media (max-width: 600px) { .main-content-inner { padding: 20px; } }
 
-.mobile-bottom-nav {
-  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+.mobile-bottom-nav { 
+  display: none; position: fixed; bottom: 0; left: 0; right: 0; 
   background: var(--sidebar-bg); border-top: 1px solid var(--border);
-  padding: 8px; gap: 8px; z-index: 150;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  padding: 8px 8px 24px; z-index: 100; justify-content: space-around;
 }
-@media (max-width: 900px) { .mobile-bottom-nav { display: flex; } }
-.mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text3); }
+@media (max-width: 1024px) { .mobile-bottom-nav { display: flex; } }
+.mobile-nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text3); transition: all .2s; }
 .mobile-nav-item.active { color: var(--accent); }
-.mobile-nav-label { font-size: 10px; font-family: 'DM Mono', monospace; }
+.mobile-nav-item svg { width: 22px; height: 22px; }
+.mobile-nav-label { font-size: 10px; font-weight: 600; text-transform: uppercase; font-family: 'DM Mono', monospace; }
+
+/* Dashboard Cards */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 24px 0; }
+.stat-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; padding: 20px; }
+.stat-card-value { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; }
+.health-ring-score { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; }
+
+.user-dropdown-wrapper { position: relative; }
+.user-dropdown { 
+  position: absolute; top: calc(100% + 8px); right: 0; 
+  width: 220px; background: var(--sidebar-bg); border: 1px solid var(--border); 
+  border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+  padding: 8px; z-index: 1000; animation: dropdown-in .2s ease-out;
+}
+@keyframes dropdown-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.dropdown-header { padding: 10px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.dropdown-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.dropdown-email { font-size: 11px; color: var(--text3); }
+.dropdown-item { 
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; 
+  border-radius: 8px; font-size: 13px; color: var(--text2); transition: all .2s;
+}
+.dropdown-item:hover { background: var(--glass-h); color: var(--text); }
+.dropdown-item.danger { color: var(--danger); }
+.dropdown-item.danger:hover { background: rgba(255, 92, 92, 0.08); }
+.dropdown-item svg { width: 16px; height: 16px; }
+.dropdown-divider { height: 1px; background: var(--border); margin: 6px 0; }
 `;
 
-// ─── Content Helpers ─────────────────────────────────────────────────────────
-
-function getGreeting(name: string) {
-  const h = new Date().getHours();
-  const part = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-  const first = name.split(" ")[0];
-  return { part, first };
-}
-
-function DashboardHome({ user }: { user: User }) {
-  const { part, first } = getGreeting(user.name);
-  return (
-    <div>
-      <h2 style={{ fontFamily: 'Syne', fontSize: '24px', fontWeight: 800 }}>
-        {part}, <span style={{ color: 'var(--accent)' }}>{first}</span>
-      </h2>
-      <p style={{ color: 'var(--text2)', marginBottom: '32px' }}>Welcome to your MedBridge portal.</p>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-        {[
-          { label: "Symptom Checks", value: "12", icon: Ic.Activity },
-          { label: "Medications", value: "3", icon: Ic.Pill },
-          { label: "Lab Reports", value: "5", icon: Ic.FileText },
-          { label: "Care Team", value: "2", icon: Ic.Users }
-        ].map(stat => (
-          <div key={stat.label} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '16px', padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <stat.icon />
-              <span style={{ fontSize: '11px', color: 'var(--accent)' }}>+2.4%</span>
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: 800, fontFamily: 'Syne' }}>{stat.value}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text3)' }}>{stat.label}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Export ─────────────────────────────────────────────────────────────
-
 export default function DashboardShell({ children }: { children?: ReactNode }) {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [user, setUser] = useState<User>(DEFAULT_USER);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
+    const fetchUser = async () => {
+      const supabase = createClient();
+      const { data: { user: sbUser } } = await supabase.auth.getUser();
+      if (sbUser) {
+        const name = sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User";
+        
+        let profileComplete = 0;
+        try {
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+          const res = await fetch(`${API_URL}/api/v1/profile`, {
+            headers: { "x-user-id": sbUser.id }
+          });
+          if (res.ok) {
+            const profile = await res.json();
+            // Calculate completion (simplified version of the one in profile/page.tsx)
+            const fields = [profile.dob, profile.gender, profile.phone, profile.state, profile.bloodGroup, profile.genotype, profile.weight, profile.height];
+            const filled = fields.filter(Boolean).length;
+            profileComplete = Math.min(100, Math.round((filled / fields.length) * 100));
+          }
+        } catch (err) {
+          console.error("Failed to fetch profile for completion:", err);
+        }
+
+        setUser({
+          name,
+          email: sbUser.email || "",
+          role: (sbUser.user_metadata?.role as UserRole) || "patient",
+          initials: name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2),
+          profileComplete,
+        });
+      }
+    };
+    fetchUser();
+  }, []);
 
   const activeNav = ALL_NAV.find(n => pathname === n.href || pathname.startsWith(n.href + "/"))?.id ?? "home";
-  const user = MOCK_USER;
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
 
   if (!mounted) return <div style={{ background: '#03050a', minHeight: '100vh' }} />;
-
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   return (
     <ShellContext.Provider value={{ sidebarOpen: !collapsed, setSidebarOpen: v => setCollapsed(!v), user, activeNav }}>
@@ -511,7 +514,7 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
             {navForRole(user.role).map(item => (
               <div key={item.id}>
                 {item.dividerBefore && <div className="nav-divider" />}
-                <a href={item.href} className={`nav-item ${activeNav === item.id ? "active" : ""}`}>
+                <a href={item.href} className={`nav-item ${activeNav === item.id ? "active" : ""}`} onClick={() => setMobileOpen(false)}>
                   <span className="nav-item-icon"><item.icon /></span>
                   <span className="nav-item-label">{item.label}</span>
                   {item.badge && <span className="nav-badge">{item.badge}</span>}
@@ -521,7 +524,7 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
           </nav>
 
           <footer className="sidebar-footer">
-            <button className="sidebar-logout">
+            <button type="button" className="sidebar-logout" onClick={handleLogout}>
               <Ic.LogOut />
               <span className="sidebar-logout-label">Sign out</span>
             </button>
@@ -529,28 +532,56 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
         </aside>
 
         <header className="topbar">
-          <div className="topbar-left">
-            <button className="topbar-hamburger" onClick={() => setMobileOpen(true)}><Ic.Menu /></button>
-            <button className="topbar-icon-btn" onClick={() => setCollapsed(!collapsed)}><Ic.ChevronLeft /></button>
-          </div>
+          <button className="topbar-hamburger" onClick={() => setMobileOpen(true)}><Ic.Menu /></button>
+          <button className="sidebar-collapse-btn" onClick={() => setCollapsed(!collapsed)}>
+            {collapsed ? <Ic.ChevronRight /> : <Ic.ChevronLeft />}
+          </button>
 
-          <div className="topbar-center">
+          <div className="topbar-search">
             <span className="topbar-search-icon"><Ic.Search /></span>
             <input type="text" className="topbar-search-input" placeholder="Search..." />
           </div>
 
-          <div className="topbar-right">
-            <button className="topbar-icon-btn" onClick={toggleTheme}>
-              {theme === "dark" ? <Ic.Sun /> : <Ic.Moon />}
+          <div className="topbar-actions">
+            <button className="topbar-icon-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+              {theme === 'dark' ? <Ic.Sun /> : <Ic.Moon />}
             </button>
             <button className="topbar-icon-btn"><Ic.Bell /></button>
-            <div className="sidebar-user-avatar" style={{ width: '30px', height: '30px', fontSize: '11px' }}>{user.initials}</div>
+            
+            <div className="user-dropdown-wrapper" ref={dropdownRef}>
+              <button 
+                onClick={() => setShowDropdown(!showDropdown)}
+                style={{ borderRadius: '50%', border: '2px solid var(--border)', padding: '2px', transition: 'all .2s' }}
+                className={showDropdown ? 'active-trigger' : ''}
+              >
+                <div className="sidebar-user-avatar" style={{ width: '32px', height: '32px', fontSize: '11px' }}>{user.initials}</div>
+              </button>
+
+              {showDropdown && (
+                <div className="user-dropdown">
+                  <div className="dropdown-header">
+                    <div className="dropdown-name">{user.name}</div>
+                    <div className="dropdown-email">{user.email}</div>
+                  </div>
+                  <a href="/dashboard/profile" className="dropdown-item" onClick={() => setShowDropdown(false)}>
+                    <Ic.User /> My Profile
+                  </a>
+                  <a href="/dashboard/settings" className="dropdown-item" onClick={() => setShowDropdown(false)}>
+                    <Ic.Settings /> Settings
+                  </a>
+                  <div className="dropdown-divider" />
+                  <button className="dropdown-item danger" onClick={handleLogout}>
+                    <Ic.LogOut /> Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
         <main className="main-content">
           <div className="main-content-inner">
-            {children ?? <DashboardHome user={user} />}
+            {children ? children : <DashboardHome user={user} />}
           </div>
         </main>
       </div>

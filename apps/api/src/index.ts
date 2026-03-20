@@ -10,6 +10,8 @@ import rateLimit from "express-rate-limit";
 import { db, users, healthProfiles } from "@medbridge/db";
 import { eq } from "drizzle-orm";
 
+import profileRoutes from "./routes/profile";
+
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -27,6 +29,8 @@ const limiter = rateLimit({
 app.use("/api/", limiter);
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
+app.use("/api/v1/profile", profileRoutes);
+
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
