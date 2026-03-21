@@ -174,48 +174,48 @@
 - [ ] Write unit tests for AfriDx weighting
 - [ ] Write unit tests for safety layer
 
-### 1.7 Document Analyzer — Frontend
-- [ ] Build document upload component (drag-and-drop + file picker)
-  - [ ] Supported types: PDF, JPG, PNG, WEBP
-  - [ ] Client-side validation (type + 10MB size limit)
-  - [ ] Upload progress indicator
-- [ ] Build document type selector (lab result / prescription / medical report / scan)
-- [ ] Build documents list page (`/documents`) with status badges (pending / processing / complete / failed)
-- [ ] Build document detail page (`/documents/[id]`)
-  - [ ] Original file preview (PDF viewer or image)
-  - [ ] Analysis results panel:
-    - [ ] Key findings section
-    - [ ] Abnormal values highlighted in red/amber
-    - [ ] Plain English summary
-    - [ ] Risk flags
-  - [ ] Mandatory disclaimer
-- [ ] Implement polling for document status (every 3 seconds while `pending` or `processing`)
+### 1.7 Document Analyzer — Frontend [x]
+- [x] Build document upload component (drag-and-drop + file picker)
+  - [x] Supported types: PDF, JPG, PNG, WEBP
+  - [x] Client-side validation (type + 10MB size limit)
+  - [x] Upload progress indicator
+- [x] Build document type selector (lab result / prescription / medical report / scan)
+- [x] Build documents list page (`/documents`) with status badges (pending / processing / complete / failed)
+- [x] Build document detail page (`/documents/[id]`)
+  - [x] Original file preview (PDF viewer or image)
+  - [x] Analysis results panel:
+    - [x] Key findings section
+    - [x] Abnormal values highlighted in red/amber
+    - [x] Plain English summary
+    - [x] Risk flags
+  - [x] Mandatory disclaimer
+- [x] Implement polling for document status (every 3 seconds while `pending` or `processing`)
 - [ ] Add websocket listener for completion notification (upgrade polling later)
 
-### 1.8 Document Analyzer — Backend
-- [ ] `GET /api/v1/documents/upload-url` — generate Supabase pre-signed upload URL
-- [ ] `POST /api/v1/documents` — create document record after upload
-- [ ] `GET /api/v1/documents` — list user's documents (paginated)
-- [ ] `GET /api/v1/documents/:id` — get document + analysis result
-- [ ] `DELETE /api/v1/documents/:id` — soft delete
-- [ ] Set up BullMQ document analysis queue
-- [ ] Write BullMQ worker that calls AI service and updates DB
-- [ ] Handle worker failure (retry 3x, then mark as `failed`)
+### 1.8 Document Analyzer — Backend [x]
+- [x] `GET /api/v1/documents/upload-url` — generate Supabase pre-signed upload URL
+- [x] `POST /api/v1/documents` — create document record after upload
+- [x] `GET /api/v1/documents` — list user's documents (paginated)
+- [x] `GET /api/v1/documents/:id` — get document + analysis result
+- [x] `DELETE /api/v1/documents/:id` — soft delete
+- [x] Set up BullMQ document analysis queue
+- [x] Write BullMQ worker that calls AI service and updates DB
+- [x] Handle worker failure (retry 3x, then mark as `failed`)
 
-### 1.9 Document Analyzer — AI Service
-- [ ] Write `routers/document.py` with `/internal/document/analyze` endpoint
-- [ ] Implement file type detection
-- [ ] Implement OCR for image files (Tesseract or AWS Textract)
-- [ ] Write document classification logic (detect: lab result / prescription / report)
-- [ ] Write extraction prompt templates:
-  - [ ] `prompts/document_extraction/lab_result_v1.j2`
-  - [ ] `prompts/document_extraction/prescription_v1.j2`
-  - [ ] `prompts/document_extraction/report_v1.j2`
-- [ ] Parse structured extraction output
-- [ ] Flag abnormal values (for lab results — compare against reference ranges)
-- [ ] Generate plain English summary
-- [ ] Return structured `DocumentExtractionResult`
-- [ ] Handle parsing failures gracefully (return partial result with error flag)
+### 1.9 Document Analyzer — AI Service [x]
+- [x] Write `routers/document.py` with `/internal/document/analyze` endpoint
+- [x] Implement file type detection
+- [x] Implement OCR for image files (Tesseract or AWS Textract)
+- [x] Write document classification logic (detect: lab result / prescription / report)
+- [x] Write extraction prompt templates:
+  - [x] `prompts/document_extraction/lab_result_v1.j2`
+  - [x] `prompts/document_extraction/prescription_v1.j2`
+  - [x] `prompts/document_extraction/report_v1.j2`
+- [x] Parse structured extraction output
+- [x] Flag abnormal values (for lab results — compare against reference ranges)
+- [x] Generate plain English summary
+- [x] Return structured `DocumentExtractionResult`
+- [x] Handle parsing failures gracefully (return partial result with error flag)
 
 ### 1.10 Phase 1 Testing & Polish
 - [ ] Write E2E tests (Playwright):

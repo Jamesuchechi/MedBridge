@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -160,8 +160,8 @@ body { font-family:'DM Sans',system-ui,sans-serif; background:var(--bg); color:v
 .hp-bmi-box { display:flex;align-items:center;gap:10px; padding:12px 14px; background:rgba(61,155,255,.06); border:1px solid rgba(61,155,255,.15); border-radius:11px; margin-top:4px; }
 .hp-bmi-box svg { width: 42px; height: 42px; color: var(--accent2); flex-shrink: 0; }
 .hp-bmi-value { font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--accent2); }
-.hp-allergy-card, .hp-med-card { display:grid; grid-template-columns:1fr 1fr auto auto; gap:8px; align-items:center; padding:14px; border-radius:13px; margin-bottom:10px; border:1px solid var(--border); background:var(--glass); }
-@media(max-width:600px){.hp-allergy-card, .hp-med-card { grid-template-columns:1fr; }}
+.hp-allergy-card, .hp-med-card { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; align-items:center; padding:14px; border-radius:13px; margin-bottom:10px; border:1px solid var(--border); background:var(--glass); }
+@media(max-width:700px){.hp-allergy-card, .hp-med-card { grid-template-columns:1fr; }}
 .hp-add-btn { display:flex;align-items:center;gap:8px; width:100%; padding:11px 16px; border:1.5px dashed var(--border); border-radius:11px; color:var(--text3); font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; }
 .hp-add-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 .hp-add-btn:hover { border-color:var(--border-h); background:var(--glass); }
@@ -285,6 +285,7 @@ function StepConditions({ data, set }: { data: ProfileData; set: (p: Partial<Pro
       {data.allergies.map(a => (
         <div key={a.id} className="hp-allergy-card">
           <input className="hp-input" placeholder="Substance" value={a.substance} onChange={e => set({ allergies: data.allergies.map(x => x.id === a.id ? { ...x, substance: e.target.value } : x) })} />
+          <select className="hp-select" value={a.reaction} onChange={e => set({ allergies: data.allergies.map(x => x.id === a.id ? { ...x, reaction: e.target.value } : x) })}><option value="">Reaction</option>{ALLERGY_REACTIONS.map(r => <option key={r} value={r}>{r}</option>)}</select>
           <select className="hp-select" value={a.severity} onChange={e => set({ allergies: data.allergies.map(x => x.id === a.id ? { ...x, severity: e.target.value as Allergy["severity"] } : x) })}><option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option></select>
           <button className="hp-btn-ghost" style={{padding:8}} onClick={() => set({ allergies: data.allergies.filter(x => x.id !== a.id) })}><Ic.Trash /></button>
         </div>
@@ -305,6 +306,7 @@ function StepMedications({ data, set }: { data: ProfileData; set: (p: Partial<Pr
         <div key={m.id} className="hp-med-card">
           <input className="hp-input" placeholder="Name" value={m.name} onChange={e => set({ medications: data.medications.map(x => x.id === m.id ? { ...x, name: e.target.value } : x) })} />
           <input className="hp-input" placeholder="Dose" value={m.dose} onChange={e => set({ medications: data.medications.map(x => x.id === m.id ? { ...x, dose: e.target.value } : x) })} />
+          <select className="hp-select" value={m.frequency} onChange={e => set({ medications: data.medications.map(x => x.id === m.id ? { ...x, frequency: e.target.value } : x) })}><option value="">Frequency</option>{FREQ_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}</select>
           <button className="hp-btn-ghost" style={{padding:8}} onClick={() => set({ medications: data.medications.filter(x => x.id !== m.id) })}><Ic.Trash /></button>
         </div>
       ))}

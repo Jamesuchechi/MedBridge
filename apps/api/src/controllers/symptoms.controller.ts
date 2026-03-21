@@ -84,9 +84,14 @@ export const analyzeSymptoms = async (req: Request, res: Response) => {
       .returning();
 
     res.status(200).json({ ...check, result: analysisResult });
-  } catch (err: any) {
-    console.error("[ANALYZE SYMPTOMS ERROR]:", err.response?.data || err.message);
-    res.status(500).json({ error: "Failed to analyze symptoms", message: err.message });
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      console.error("[ANALYZE SYMPTOMS ERROR]:", err.response?.data || err.message);
+      res.status(500).json({ error: "Failed to analyze symptoms", message: err.message });
+    } else {
+      console.error("[ANALYZE SYMPTOMS ERROR]:", err);
+      res.status(500).json({ error: "Failed to analyze symptoms", message: err instanceof Error ? err.message : String(err) });
+    }
   }
 };
 
@@ -112,7 +117,7 @@ export const getHistory = async (req: Request, res: Response) => {
     }));
 
     res.status(200).json(formattedHistory);
-  } catch (err: any) {
+  } catch (err) {
     console.error("[GET HISTORY ERROR]:", err);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -142,7 +147,7 @@ export const getById = async (req: Request, res: Response) => {
       symptoms: JSON.parse(check.symptoms),
       result: JSON.parse(check.analysis),
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[GET BY ID ERROR]:", err);
     res.status(500).json({ error: "Internal server error" });
   }

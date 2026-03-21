@@ -10,7 +10,7 @@ const LockIcon = () => (
   </svg>
 );
 const CheckIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12"/>
   </svg>
 );
@@ -38,7 +38,15 @@ export default function ResetPasswordPage() {
   if (done) {
     return (
       <AuthLayout headline="Password updated" headlineHighlight="updated">
-        <div style={{ textAlign: "center" }}>
+        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: "50%",
+            background: "rgba(0, 229, 160, 0.1)", border: "1.5px solid rgba(0, 229, 160, 0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#00e5a0", marginBottom: 20
+          }}>
+            <CheckIcon />
+          </div>
           <h1 style={{ marginBottom: 12 }}>Success</h1>
           <p style={{ color: "var(--text2)", marginBottom: 24 }}>You can now sign in with your new password.</p>
           <a href="/login" className="auth-btn auth-btn-primary">Go to login <ArrowRightIcon /></a>

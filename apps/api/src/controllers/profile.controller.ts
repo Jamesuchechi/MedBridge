@@ -22,7 +22,7 @@ export const getProfile = async (req: Request, res: Response) => {
     }
 
     res.status(200).json(profile);
-  } catch (err: any) {
+  } catch (err) {
     console.error("[GET PROFILE ERROR]:", err);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -80,8 +80,8 @@ export const upsertProfile = async (req: Request, res: Response) => {
       .returning();
 
     res.status(200).json({ status: "success", profile });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[UPSERT PROFILE ERROR]:", err);
-    res.status(500).json({ error: "Failed to save profile", message: err.message });
+    res.status(500).json({ error: "Failed to save profile", message: err instanceof Error ? err.message : String(err) });
   }
 };

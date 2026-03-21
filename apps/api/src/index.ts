@@ -3,6 +3,7 @@ import path from "path";
 dotenv.config({ path: path.join(__dirname, "../../../.env") });
 
 import express, { Request, Response } from "express";
+import http from "http";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -10,8 +11,10 @@ import rateLimit from "express-rate-limit";
 import { db, users, healthProfiles } from "@medbridge/db";
 import { eq } from "drizzle-orm";
 
+import { initSocket } from "./lib/socket";
 import profileRoutes from "./routes/profile";
 import symptomRoutes from "./routes/symptoms";
+import documentRoutes from "./routes/documents";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -32,6 +35,7 @@ app.use("/api/", limiter);
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use("/api/v1/profile", profileRoutes);
 app.use("/api/v1/symptoms", symptomRoutes);
+app.use("/api/v1/documents", documentRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
@@ -41,8 +45,8 @@ app.get("/api/db-test", async (req: Request, res: Response) => {
   try {
     const allUsers = await db.select().from(users).limit(1);
     res.status(200).json({ status: "connected", userCount: allUsers.length });
-  } catch (err: any) {
-    res.status(500).json({ status: "error", message: err.message });
+  } catch (err) {
+    res.status(500).json({ status: "error", message: err instanceof Error ? err.message : String(err) });
   }
 });
 
@@ -61,7 +65,7 @@ app.post("/api/auth/sync", async (req: Request, res: Response) => {
         id,
         email,
         name: name || null,
-        role: (role?.toUpperCase() as any) || "PATIENT",
+        role: (role?.toUpperCase() as "PATIENT" | "CLINICIAN" | "CLINIC_STAFF" | "CLINIC_ADMIN" | "SUPER_ADMIN") || "PATIENT",
         isVerified: true,
         updatedAt: new Date(),
       })
@@ -69,7 +73,7 @@ app.post("/api/auth/sync", async (req: Request, res: Response) => {
         target: users.id,
         set: {
           name: name || null,
-          role: (role?.toUpperCase() as any) || "PATIENT",
+          role: (role?.toUpperCase() as "PATIENT" | "CLINICIAN" | "CLINIC_STAFF" | "CLINIC_ADMIN" | "SUPER_ADMIN") || "PATIENT",
           updatedAt: new Date(),
         },
       })
@@ -91,14 +95,17 @@ app.post("/api/auth/sync", async (req: Request, res: Response) => {
     }
 
     res.status(200).json({ status: "synced", user });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[SYNC ERROR]:", err);
-    res.status(500).json({ error: "Sync failed", message: err.message });
+    res.status(500).json({ error: "Sync failed", message: err instanceof Error ? err.message : String(err) });
   }
 });
 
 // ─── Server ──────────────────────────────────────────────────────────────────
-app.listen(port, () => {
+const httpServer = http.createServer(app);
+initSocket(httpServer);
+
+httpServer.listen(port, () => {
   console.log(`[API]: Server is running at http://localhost:${port}`);
 });
 

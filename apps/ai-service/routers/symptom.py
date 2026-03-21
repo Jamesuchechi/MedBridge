@@ -10,6 +10,7 @@ from jinja2 import Template
 from ..core.afridx import apply_afridx_weighting
 
 router = APIRouter(prefix="/internal/symptom", tags=["symptom"])
+from ..core.llm import get_llm_client
 
 # ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -49,32 +50,7 @@ AFRIDX_INSIGHTS = {
 
 # ─── Logic ────────────────────────────────────────────────────────────────────
 
-def get_llm_client():
-    """Iterates through providers and returns the first available valid client."""
-    # 1. Groq (Preferred for speed/cost)
-    groq_key = os.getenv("GROQ_API_KEY")
-    if groq_key and groq_key.startswith("gsk_"):
-        return Groq(api_key=groq_key), "groq", "llama-3.1-70b-versatile"
-    
-    # 2. Mistral
-    mistral_key = os.getenv("MISTRAL_API_KEY")
-    if mistral_key and not mistral_key.startswith("your-"):
-        return Mistral(api_key=mistral_key), "mistral", "mistral-large-latest"
-    
-    # 3. OpenRouter (Access to Claude/Llama/Gemini)
-    or_key = os.getenv("OPENROUTER_API_KEY")
-    if or_key and or_key.startswith("sk-or-"):
-        return OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=or_key,
-        ), "openrouter", "google/gemini-pro-1.5"
-    
-    # 4. OpenAI
-    oa_key = os.getenv("OPENAI_API_KEY")
-    if oa_key and oa_key.startswith("sk-"):
-        return OpenAI(api_key=oa_key), "openai", "gpt-4o"
-        
-    return None, "mock", "rule-based"
+# Shared LLM client moved to core/llm.py
 
 async def run_llm_analysis(client, provider, model, prompt_data):
     """Executes the LLM call based on the provider."""

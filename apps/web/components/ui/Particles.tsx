@@ -2,13 +2,21 @@
 
 import React, { useState, useEffect } from "react";
 
+interface Particle {
+  left: string;
+  delay: string;
+  duration: string;
+  width: string;
+  opacity: number;
+}
+
 export function Particles() {
   const [mounted, setMounted] = useState(false);
-  const [particles, setParticles] = useState<any[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
     setMounted(true);
-    const newParticles = Array.from({ length: 20 }).map(() => ({
+    const newParticles: Particle[] = Array.from({ length: 20 }).map(() => ({
       left: `${Math.random() * 100}%`,
       delay: `${Math.random() * 8}s`,
       duration: `${6 + Math.random() * 10}s`,

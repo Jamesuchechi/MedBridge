@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "worker": "ts-node-dev --respawn --transpile-only src/workers/analysis.worker.ts",
+    "setup:storage": "ts-node src/scripts/setup-storage.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint .",
@@ -12,27 +14,35 @@
   "dependencies": {
     "@medbridge/db": "workspace:*",
     "@medbridge/utils": "workspace:*",
+    "@supabase/supabase-js": "^2.99.3",
+    "@types/socket.io": "^3.0.2",
     "axios": "^1.13.6",
     "bcryptjs": "^3.0.2",
+    "bullmq": "^5.71.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.45.1",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
+    "ioredis": "5.9.3",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "socket.io": "^4.8.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.9",
-    "@types/morgan": "^1.9.9",
-    "@types/node": "^20.17.22",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^20.19.37",
     "eslint": "^9.21.0",
+    "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.57.1"
   }
 }

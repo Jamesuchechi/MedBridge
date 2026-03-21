@@ -15,7 +15,8 @@ const getProfile = async (req, res) => {
             .where((0, drizzle_orm_1.eq)(db_1.healthProfiles.userId, userId))
             .limit(1);
         if (!profile) {
-            return res.status(404).json({ error: "Profile not found" });
+            // Return 200 with null values so frontend can still render the form
+            return res.status(200).json({ userId });
         }
         res.status(200).json(profile);
     }
@@ -75,7 +76,7 @@ const upsertProfile = async (req, res) => {
     }
     catch (err) {
         console.error("[UPSERT PROFILE ERROR]:", err);
-        res.status(500).json({ error: "Failed to save profile", message: err.message });
+        res.status(500).json({ error: "Failed to save profile", message: err instanceof Error ? err.message : String(err) });
     }
 };
 exports.upsertProfile = upsertProfile;

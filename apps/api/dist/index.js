@@ -7,13 +7,17 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 dotenv_1.default.config({ path: path_1.default.join(__dirname, "../../../.env") });
 const express_1 = __importDefault(require("express"));
+const http_1 = __importDefault(require("http"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const db_1 = require("@medbridge/db");
 const drizzle_orm_1 = require("drizzle-orm");
+const socket_1 = require("./lib/socket");
 const profile_1 = __importDefault(require("./routes/profile"));
+const symptoms_1 = __importDefault(require("./routes/symptoms"));
+const documents_1 = __importDefault(require("./routes/documents"));
 const app = (0, express_1.default)();
 const port = process.env.PORT || 4000;
 // ─── Middleware ──────────────────────────────────────────────────────────────
@@ -29,6 +33,8 @@ const limiter = (0, express_rate_limit_1.default)({
 app.use("/api/", limiter);
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use("/api/v1/profile", profile_1.default);
+app.use("/api/v1/symptoms", symptoms_1.default);
+app.use("/api/v1/documents", documents_1.default);
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
@@ -38,7 +44,7 @@ app.get("/api/db-test", async (req, res) => {
         res.status(200).json({ status: "connected", userCount: allUsers.length });
     }
     catch (err) {
-        res.status(500).json({ status: "error", message: err.message });
+        res.status(500).json({ status: "error", message: err instanceof Error ? err.message : String(err) });
     }
 });
 app.post("/api/auth/sync", async (req, res) => {
@@ -84,11 +90,13 @@ app.post("/api/auth/sync", async (req, res) => {
     }
     catch (err) {
         console.error("[SYNC ERROR]:", err);
-        res.status(500).json({ error: "Sync failed", message: err.message });
+        res.status(500).json({ error: "Sync failed", message: err instanceof Error ? err.message : String(err) });
     }
 });
 // ─── Server ──────────────────────────────────────────────────────────────────
-app.listen(port, () => {
+const httpServer = http_1.default.createServer(app);
+(0, socket_1.initSocket)(httpServer);
+httpServer.listen(port, () => {
     console.log(`[API]: Server is running at http://localhost:${port}`);
 });
 exports.default = app;
