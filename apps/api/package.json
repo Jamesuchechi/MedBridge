@@ -12,6 +12,7 @@
   "dependencies": {
     "@medbridge/db": "workspace:*",
     "@medbridge/utils": "workspace:*",
+    "axios": "^1.13.6",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

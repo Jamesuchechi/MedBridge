@@ -17,7 +17,8 @@ export const getProfile = async (req: Request, res: Response) => {
       .limit(1);
 
     if (!profile) {
-      return res.status(404).json({ error: "Profile not found" });
+      // Return 200 with null values so frontend can still render the form
+      return res.status(200).json({ userId });
     }
 
     res.status(200).json(profile);

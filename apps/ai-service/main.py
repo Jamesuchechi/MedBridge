@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from routers import symptom
+
 app = FastAPI(title="MedBridge AI Service")
 
 # CORS
@@ -16,6 +18,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(symptom.router)
 
 @app.get("/health")
 async def health_check():

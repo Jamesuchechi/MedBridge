@@ -11,6 +11,7 @@ import { db, users, healthProfiles } from "@medbridge/db";
 import { eq } from "drizzle-orm";
 
 import profileRoutes from "./routes/profile";
+import symptomRoutes from "./routes/symptoms";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -30,6 +31,7 @@ app.use("/api/", limiter);
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use("/api/v1/profile", profileRoutes);
+app.use("/api/v1/symptoms", symptomRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });

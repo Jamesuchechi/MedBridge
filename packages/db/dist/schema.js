@@ -29,13 +29,23 @@ exports.clinics = (0, pg_core_1.pgTable)("clinics", {
 });
 exports.healthProfiles = (0, pg_core_1.pgTable)("health_profiles", {
     id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
-    userId: (0, pg_core_1.uuid)("user_id").notNull().references(() => exports.users.id, { onDelete: "cascade" }),
+    userId: (0, pg_core_1.uuid)("user_id").notNull().unique().references(() => exports.users.id, { onDelete: "cascade" }),
     dob: (0, pg_core_1.date)("dob"),
     gender: (0, pg_core_1.text)("gender"),
+    phone: (0, pg_core_1.text)("phone"),
+    state: (0, pg_core_1.text)("state"),
+    lga: (0, pg_core_1.text)("lga"),
     bloodGroup: (0, pg_core_1.text)("blood_group"),
     genotype: (0, pg_core_1.text)("genotype"),
-    allergies: (0, pg_core_1.text)("allergies"),
-    chronicConditions: (0, pg_core_1.text)("chronic_conditions"),
+    weight: (0, pg_core_1.text)("weight"),
+    height: (0, pg_core_1.text)("height"),
+    chronicConditions: (0, pg_core_1.text)("chronic_conditions"), // JSON string array
+    allergies: (0, pg_core_1.text)("allergies"), // JSON string array of objects
+    medications: (0, pg_core_1.text)("medications"), // JSON string array of objects
+    familyHistory: (0, pg_core_1.text)("family_history"), // JSON string array
+    emergencyName: (0, pg_core_1.text)("emergency_name"),
+    emergencyPhone: (0, pg_core_1.text)("emergency_phone"),
+    emergencyRelation: (0, pg_core_1.text)("emergency_relation"),
     createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
 });

@@ -131,46 +131,46 @@
 - [x] Display profile summary on dashboard home
 - [x] Prompt new users to complete profile (used to enrich AI calls)
 
-### 1.4 Symptom Checker — Frontend
-- [ ] Build symptom input UI (searchable tag input with autocomplete from symptom taxonomy)
-- [ ] Build duration selector (hours / days / weeks)
-- [ ] Build severity slider (1–10 with descriptive labels)
-- [ ] Build additional context inputs (fever, location, known conditions)
-- [ ] Build loading state (streaming-style UI while AI processes)
-- [ ] Build results display:
-  - [ ] Possible conditions list with probability indicators
-  - [ ] Severity / urgency banner (color-coded: green / amber / red)
-  - [ ] Recommended next steps
-  - [ ] Emergency alert UI (full-screen red banner for critical symptoms)
-  - [ ] Mandatory disclaimer component (always visible, styled appropriately)
-  - [ ] "Find a clinic near you" CTA (links to Google Maps with location)
-- [ ] Build symptom history list page (`/symptoms`)
-- [ ] Build individual symptom check detail page (`/symptoms/[id]`)
+### 1.4 Symptom Checker — Frontend [x]
+- [x] Build symptom input UI (searchable tag input with autocomplete from symptom taxonomy)
+- [x] Build duration selector (hours / days / weeks)
+- [x] Build severity slider (1–10 with descriptive labels)
+- [x] Build additional context inputs (fever, location, known conditions)
+- [x] Build loading state (streaming-style UI while AI processes)
+- [x] Build results display:
+  - [x] Possible conditions list with probability indicators
+  - [x] Severity / urgency banner (color-coded: green / amber / red)
+  - [x] Recommended next steps
+  - [x] Emergency alert UI (full-screen red banner for critical symptoms)
+  - [x] Mandatory disclaimer component (always visible, styled appropriately)
+  - [x] "Find a clinic near you" CTA (links to Google Maps with location)
+- [x] Build symptom history list page (`/symptoms`)
+- [x] Build individual symptom check detail page (`/symptoms/[id]`)
 
-### 1.5 Symptom Checker — Backend
-- [ ] `POST /api/v1/symptoms/analyze` endpoint
-- [ ] Request validation schema (Zod)
-- [ ] Fetch user health profile for context enrichment
-- [ ] Call Python AI service at `/internal/symptom/analyze`
-- [ ] Save result to `symptom_checks` table
-- [ ] `GET /api/v1/symptoms/history` endpoint (paginated)
-- [ ] `GET /api/v1/symptoms/:id` endpoint
-- [ ] Rate limit: 10 symptom checks per user per day (freemium)
+### 1.5 Symptom Checker — Backend [x]
+- [x] `POST /api/v1/symptoms/analyze` endpoint
+- [x] Request validation schema (Zod)
+- [x] Fetch user health profile for context enrichment
+- [x] Call Python AI service at `/internal/symptom/analyze`
+- [x] Save result to `symptom_checks` table
+- [x] `GET /api/v1/symptoms/history` endpoint (paginated)
+- [x] `GET /api/v1/symptoms/:id` endpoint
+- [x] Rate limit: 10 symptom checks per user per day (freemium)
 
-### 1.6 Symptom Checker — AI Service
-- [ ] Write `routers/symptom.py` with `/internal/symptom/analyze` endpoint
-- [ ] Implement safety check (`core/safety.py`)
-  - [ ] Emergency pattern matching
-  - [ ] Return emergency response immediately without LLM if triggered
-- [ ] Write symptom analysis prompt template (`prompts/symptom_analysis/v1.j2`)
-- [ ] Implement LLM call (GPT-4o primary, Groq Llama3 fallback)
-- [ ] Parse structured LLM output (condition list, probabilities, reasoning)
-- [ ] Implement AfriDx regional weighting (`core/afridx.py`)
-  - [ ] Nigeria prevalence weights dictionary
-  - [ ] Seasonal adjustment (malaria higher May–Oct rainy season)
-  - [ ] Genotype intersection (sickle cell crisis weighting)
-- [ ] Apply response safety filter (post-LLM guardrails)
-- [ ] Return structured `SymptomAnalysisResult` Pydantic model
+### 1.6 Symptom Checker — AI Service [x]
+- [x] Write `routers/symptom.py` with `/internal/symptom/analyze` endpoint
+- [x] Implement safety check (`core/safety.py`)
+  - [x] Emergency pattern matching
+  - [x] Return emergency response immediately without LLM if triggered
+- [x] Write symptom analysis prompt template (`prompts/symptom_analysis/v1.j2`)
+- [x] Implement LLM call (GPT-4o primary, Groq Llama3 fallback)
+- [x] Parse structured LLM output (condition list, probabilities, reasoning)
+- [x] Implement AfriDx regional weighting (`core/afridx.py`)
+  - [x] Nigeria prevalence weights dictionary
+  - [x] Seasonal adjustment (malaria higher May–Oct rainy season)
+  - [x] Genotype intersection (sickle cell crisis weighting)
+- [x] Apply response safety filter (post-LLM guardrails)
+- [x] Return structured `SymptomAnalysisResult` Pydantic model
 - [ ] Write unit tests for AfriDx weighting
 - [ ] Write unit tests for safety layer
 
