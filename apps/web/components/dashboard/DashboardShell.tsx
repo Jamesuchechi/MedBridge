@@ -373,8 +373,9 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .topbar-icon-btn { width: 38px; height: 38px; border-radius: 11px; background: var(--glass); border: 1px solid var(--border); color: var(--text2); display: flex; align-items: center; justify-content: center; }
 .topbar-icon-btn svg { width: 18px; height: 18px; }
 
-.main-content { grid-area: main; overflow-y: auto; background: var(--bg); padding-bottom: 100px; }
-.main-content-inner { padding: 32px; max-width: 1200px; margin: 0 auto; }
+.main-content { grid-area: main; overflow-y: auto; background: var(--bg); padding-bottom: 60px; }
+.main-content-inner { padding: 40px; width: 100%; margin: 0; }
+@media (max-width: 768px) { .main-content-inner { padding: 20px; } }
 @media (max-width: 600px) { .main-content-inner { padding: 20px; } }
 
 .mobile-bottom-nav { 

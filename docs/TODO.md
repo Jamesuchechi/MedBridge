@@ -190,7 +190,7 @@
     - [x] Risk flags
   - [x] Mandatory disclaimer
 - [x] Implement polling for document status (every 3 seconds while `pending` or `processing`)
-- [ ] Add websocket listener for completion notification (upgrade polling later)
+- [x] Add websocket listener for completion notification (upgrade polling later)
 
 ### 1.8 Document Analyzer — Backend [x]
 - [x] `GET /api/v1/documents/upload-url` — generate Supabase pre-signed upload URL

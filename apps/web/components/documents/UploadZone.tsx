@@ -56,7 +56,7 @@ export function UploadZone({ onComplete }: { onComplete: (doc: MedDocument) => v
         
         // 1. Get pre-signed URL from our API
         const { uploadUrl, fileUrl } = await api.get<{ uploadUrl: string; fileUrl: string; path: string }>(
-          `/documents/upload-url?fileName=${encodeURIComponent(qf.file.name)}`
+          `/api/v1/documents/upload-url?fileName=${encodeURIComponent(qf.file.name)}`
         );
 
         // 2. Upload file directly to Supabase Storage
@@ -69,7 +69,7 @@ export function UploadZone({ onComplete }: { onComplete: (doc: MedDocument) => v
         if (!uploadRes.ok) throw new Error("File upload failed");
 
         // 3. Notify backend to create document record and start analysis
-        const doc = await api.post<MedDocument>("/documents", {
+        const doc = await api.post<MedDocument>("/api/v1/documents", {
           fileName: qf.file.name,
           fileType: qf.file.type,
           docType: qf.docType,

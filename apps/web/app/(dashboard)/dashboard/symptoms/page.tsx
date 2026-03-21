@@ -121,10 +121,18 @@ const CSS = `
   --low: #00e5a0; --moderate: #ffb800; --high: #ff7c2b; --emergency: #ff3b3b;
   --card: rgba(255,255,255,0.03); --card-b: rgba(255,255,255,0.07);
 }
+[data-theme="light"] {
+  --bg: #f8fafc; --bg2: #eff4f9; --bg3: #e2eaf3;
+  --glass: rgba(255,255,255,0.7); --glass-h: rgba(255,255,255,0.9);
+  --border: rgba(0,0,0,0.08); --border-h: rgba(0,168,112,0.25);
+  --text: #0f172a; --text2: rgba(15,23,42,0.6); --text3: rgba(15,23,42,0.35);
+  --accent: #00a870; --accent2: #1a6fcc;
+  --card: rgba(255,255,255,0.8); --card-b: rgba(0,0,0,0.08);
+}
 
 .sc-page {
-  max-width: 800px; margin: 0 auto;
-  padding: 28px 24px 80px;
+  width: 100%; max-width: 1200px;
+  padding: 32px 0 80px;
   animation: sc-enter .35s ease both;
 }
 @keyframes sc-enter { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
@@ -174,7 +182,7 @@ const CSS = `
   margin-bottom: 16px;
   display: flex; align-items: center; gap: 8px;
 }
-.sc-card-title svg { width: 16px; height: 16px; color: var(--accent); }
+.sc-card-title svg { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
 
 .sc-tag-input-wrap {
   display: flex; flex-wrap: wrap; gap: 6px;
@@ -273,13 +281,14 @@ const CSS = `
   font-size: 28px; font-weight: 800;
 }
 
-.sc-context-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
+.sc-context-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .sc-toggle-btn {
   display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px; border-radius: 12px;
+  padding: 14px 18px; border-radius: 12px;
   border: 1.5px solid var(--border); background: var(--glass);
-  cursor: pointer; transition: all .2s; color: var(--text2); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .2s; color: var(--text2); font-size: 14px; font-weight: 600;
 }
+.sc-toggle-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
 .sc-toggle-btn.active {
   border-color: var(--toggle-color, var(--warn));
   background: color-mix(in srgb, var(--toggle-color, var(--warn)) 10%, transparent);
@@ -313,13 +322,14 @@ const CSS = `
 .sc-location-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); display: flex; }
 
 .sc-submit {
-  width: 100%; padding: 15px; border-radius: 14px;
+  width: 100%; padding: 18px; border-radius: 16px;
   background: linear-gradient(135deg,var(--accent),var(--accent2));
-  color: #000; font-size: 15px; font-weight: 800;
+  color: #000; font-size: 16px; font-weight: 800;
   cursor: pointer; border: none; transition: all .25s;
-  display: flex; align-items: center; justify-content: center; gap: 9px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
   box-shadow: 0 4px 24px rgba(0,229,160,.28);
 }
+.sc-submit svg { width: 22px; height: 22px; flex-shrink: 0; }
 .sc-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 36px rgba(0,229,160,.4); }
 .sc-submit:disabled { opacity: .5; cursor: not-allowed; }
 
@@ -364,6 +374,7 @@ const CSS = `
   width: 44px; height: 44px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
 }
+.sc-urgency-icon svg { width: 22px; height: 22px; }
 .sc-urgency-banner.low .sc-urgency-icon { background: rgba(0,229,160,.15); color: var(--low); }
 .sc-urgency-banner.moderate .sc-urgency-icon { background: rgba(255,184,0,.15); color: var(--moderate); }
 .sc-urgency-banner.high .sc-urgency-icon { background: rgba(255,124,43,.15); color: var(--high); }
@@ -399,6 +410,7 @@ const CSS = `
   background: rgba(0,229,160,.12); color: var(--accent);
   display: flex; align-items: center; justify-content: center; font-size: 10px;
 }
+.sc-step-num svg { width: 12px; height: 12px; }
 
 .sc-afridx-box {
   display: flex; gap: 13px; padding: 16px;

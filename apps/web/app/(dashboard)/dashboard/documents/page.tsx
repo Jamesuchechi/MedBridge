@@ -16,7 +16,7 @@ export default function DocumentsPage() {
 
   const fetchDocs = useCallback(async () => {
     try {
-      const data = await api.get<MedDocument[]>("/documents");
+      const data = await api.get<MedDocument[]>("/api/v1/documents");
       setDocs(data);
     } catch (err) {
       console.error("Failed to fetch documents", err);

@@ -101,7 +101,7 @@ const CSS = `
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family:'DM Sans',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
-.hp-page { min-height:100vh; padding:32px 24px 80px; max-width:820px; margin:0 auto; animation:hp-enter .4s ease both; }
+.hp-page { min-height:100vh; padding:32px 0 80px; width:100%; max-width:1200px; animation:hp-enter .4s ease both; }
 @keyframes hp-enter { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
 .hp-header { margin-bottom:32px; }
 .hp-eyebrow { display:inline-flex; align-items:center; gap:6px; font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }

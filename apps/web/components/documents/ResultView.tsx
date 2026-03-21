@@ -3,6 +3,8 @@ import Image from "next/image";
 import { MedDocument, FlagLevel } from "@/types/documents";
 import { I } from "@/components/ui/icons";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/auth.store";
+import { getSocket } from "@/lib/socket";
 
 const FLAG_META: Record<FlagLevel, { label: string; color: string; bg: string; border: string }> = {
   normal: { label: "Normal", color: "#00e5a0", bg: "rgba(0,229,160,.1)", border: "rgba(0,229,160,.2)" },
@@ -20,10 +22,11 @@ const RISK_META = {
 export function ResultView({ doc, onBack }: { doc: MedDocument; onBack: () => void }) {
   const [currentDoc, setCurrentDoc] = useState<MedDocument>(doc);
   const [flagFilter, setFlagFilter] = useState<FlagLevel | "all">("all");
+  const user = useAuthStore((state) => state.user);
 
   const pollStatus = useCallback(async () => {
     try {
-      const updatedDoc = await api.get<MedDocument>(`/documents/${doc.id}`);
+      const updatedDoc = await api.get<MedDocument>(`/api/v1/documents/${doc.id}`);
       if (updatedDoc.status !== currentDoc.status) {
         setCurrentDoc(updatedDoc);
       }
@@ -38,6 +41,23 @@ export function ResultView({ doc, onBack }: { doc: MedDocument; onBack: () => vo
       return () => clearInterval(interval);
     }
   }, [currentDoc.status, pollStatus]);
+
+  useEffect(() => {
+    if (user?.id) {
+      const socket = getSocket(user.id);
+      if (socket) {
+        socket.on("document:analyzed", (updatedDoc: MedDocument) => {
+          if (updatedDoc.id === doc.id) {
+            console.log("[SOCKET]: Document analysis complete received");
+            setCurrentDoc(updatedDoc);
+          }
+        });
+        return () => {
+          socket.off("document:analyzed");
+        };
+      }
+    }
+  }, [user?.id, doc.id]);
 
   const r = currentDoc.result;
   const isImage = currentDoc.fileUrl.match(/\.(jpg|jpeg|png|webp)($|\?)/i);
