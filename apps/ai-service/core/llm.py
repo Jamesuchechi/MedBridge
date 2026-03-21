@@ -1,7 +1,7 @@
 import os
 from openai import OpenAI
 from groq import Groq
-from mistralai import Mistral
+from mistralai.client import Mistral
 
 def get_llm_client(require_vision=False):
     """

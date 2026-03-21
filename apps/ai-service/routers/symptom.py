@@ -5,12 +5,12 @@ import os
 import json
 from openai import OpenAI
 from groq import Groq
-from mistralai import Mistral
+from mistralai.client import Mistral
 from jinja2 import Template
-from ..core.afridx import apply_afridx_weighting
+from core.afridx import apply_afridx_weighting
 
 router = APIRouter(prefix="/internal/symptom", tags=["symptom"])
-from ..core.llm import get_llm_client
+from core.llm import get_llm_client
 
 # ─── Models ───────────────────────────────────────────────────────────────────
 

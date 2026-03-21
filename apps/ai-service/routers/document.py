@@ -5,7 +5,7 @@ import os
 import json
 from openai import OpenAI
 
-from ..core.llm import get_llm_client
+from core.llm import get_llm_client
 
 router = APIRouter()
 
