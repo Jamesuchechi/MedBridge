@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.drugQueryLogs = exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
+exports.moderationAuditLog = exports.drugPriceReports = exports.drugAvailabilityReports = exports.pharmacies = exports.drugQueryLogs = exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 exports.roleEnum = (0, pg_core_1.pgEnum)("role", [
     "PATIENT",
@@ -103,5 +103,67 @@ exports.drugQueryLogs = (0, pg_core_1.pgTable)("drug_query_logs", {
     drugId: (0, pg_core_1.uuid)("drug_id").references(() => exports.drugs.id, { onDelete: "set null" }),
     query: (0, pg_core_1.text)("query").notNull(),
     queryType: (0, pg_core_1.text)("query_type").notNull(), // search, detail, interaction, explanation
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+});
+// ─── Pharmacies ──────────────────────────────────────────────────────────────
+exports.pharmacies = (0, pg_core_1.pgTable)("pharmacies", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    name: (0, pg_core_1.text)("name").notNull(),
+    address: (0, pg_core_1.text)("address").notNull(),
+    state: (0, pg_core_1.text)("state").notNull(),
+    lga: (0, pg_core_1.text)("lga"),
+    phone: (0, pg_core_1.text)("phone"),
+    email: (0, pg_core_1.text)("email"),
+    lat: (0, pg_core_1.integer)("lat"), // Storing as integer (e.g. multiplied by 10^7) or double precision
+    lng: (0, pg_core_1.integer)("lng"),
+    osmId: (0, pg_core_1.text)("osm_id").unique(),
+    osmType: (0, pg_core_1.text)("osm_type"), // 'node' | 'way' | 'relation'
+    openingHours: (0, pg_core_1.text)("opening_hours"),
+    website: (0, pg_core_1.text)("website"),
+    isVerified: (0, pg_core_1.boolean)("is_verified").default(false),
+    isClosed: (0, pg_core_1.boolean)("is_closed").default(false),
+    trustScore: (0, pg_core_1.integer)("trust_score").default(50),
+    reportCount: (0, pg_core_1.integer)("report_count").default(0),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+    updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
+});
+// ─── Drug Availability Reports ────────────────────────────────────────────────
+exports.drugAvailabilityReports = (0, pg_core_1.pgTable)("drug_availability_reports", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    pharmacyId: (0, pg_core_1.uuid)("pharmacy_id").notNull().references(() => exports.pharmacies.id, { onDelete: "cascade" }),
+    drugId: (0, pg_core_1.uuid)("drug_id").references(() => exports.drugs.id, { onDelete: "set null" }),
+    drugName: (0, pg_core_1.text)("drug_name").notNull(),
+    isInStock: (0, pg_core_1.boolean)("is_in_stock").notNull(),
+    reportedBy: (0, pg_core_1.text)("reported_by"), // user_id
+    expiresAt: (0, pg_core_1.timestamp)("expires_at"),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+});
+// ─── Drug Price Reports ───────────────────────────────────────────────────────
+exports.drugPriceReports = (0, pg_core_1.pgTable)("drug_price_reports", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    pharmacyId: (0, pg_core_1.uuid)("pharmacy_id").notNull().references(() => exports.pharmacies.id, { onDelete: "cascade" }),
+    drugId: (0, pg_core_1.uuid)("drug_id").references(() => exports.drugs.id, { onDelete: "set null" }),
+    drugName: (0, pg_core_1.text)("drug_name").notNull(),
+    price: (0, pg_core_1.integer)("price").notNull(),
+    quantity: (0, pg_core_1.text)("quantity"),
+    reportedBy: (0, pg_core_1.text)("reported_by"), // user_id
+    moderationStatus: (0, pg_core_1.text)("moderation_status").default("pending").notNull(),
+    flagReason: (0, pg_core_1.text)("flag_reason"),
+    moderatedBy: (0, pg_core_1.text)("moderated_by"),
+    moderationNote: (0, pg_core_1.text)("moderation_note"),
+    moderatedAt: (0, pg_core_1.timestamp)("moderated_at"),
+    isAutoFlagged: (0, pg_core_1.boolean)("is_auto_flagged").default(false),
+    autoFlagReason: (0, pg_core_1.text)("auto_flag_reason"),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+});
+// ─── Moderation Audit Log ─────────────────────────────────────────────────────
+exports.moderationAuditLog = (0, pg_core_1.pgTable)("moderation_audit_log", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    reportId: (0, pg_core_1.uuid)("report_id").notNull().references(() => exports.drugPriceReports.id, { onDelete: "cascade" }),
+    adminId: (0, pg_core_1.text)("admin_id").notNull(),
+    action: (0, pg_core_1.text)("action").notNull(),
+    previousStatus: (0, pg_core_1.text)("previous_status"),
+    newStatus: (0, pg_core_1.text)("new_status"),
+    note: (0, pg_core_1.text)("note"),
     createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
 });

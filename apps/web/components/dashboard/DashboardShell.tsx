@@ -515,21 +515,24 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
             </div>
           </div>
 
-          <nav className="sidebar-nav">
-            {navForRole(user.role).map(item => (
-              <div key={item.id}>
-                {item.dividerBefore && <div className="nav-divider" />}
-                <a
-                  href={item.href}
-                  className={`nav-item ${activeNav === item.id ? "active" : ""}`}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <span className="nav-item-icon"><item.icon /></span>
-                  <span className="nav-item-label">{item.label}</span>
-                  {item.badge && <span className="nav-badge">{item.badge}</span>}
-                </a>
-              </div>
-            ))}
+          <nav className="sidebar-nav" aria-label="Main Navigation">
+            <ul style={{ listStyle: "none" }}>
+              {navForRole(user.role).map(item => (
+                <li key={item.id}>
+                  {item.dividerBefore && <div className="nav-divider" role="separator" />}
+                  <a
+                    href={item.href}
+                    className={`nav-item ${activeNav === item.id ? "active" : ""}`}
+                    aria-current={activeNav === item.id ? "page" : undefined}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <span className="nav-item-icon" aria-hidden="true"><item.icon /></span>
+                    <span className="nav-item-label">{item.label}</span>
+                    {item.badge && <span className="nav-badge" aria-label={`${item.badge} feature`}>{item.badge}</span>}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </nav>
 
           <footer className="sidebar-footer">
@@ -541,8 +544,8 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
         </aside>
 
         <header className="topbar">
-          <button className="topbar-hamburger" onClick={() => setMobileOpen(true)}><Ic.Menu /></button>
-          <button className="sidebar-collapse-btn" onClick={() => setCollapsed(!collapsed)}>
+          <button className="topbar-hamburger" onClick={() => setMobileOpen(true)} aria-label="Open mobile menu"><Ic.Menu /></button>
+          <button className="sidebar-collapse-btn" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
             {collapsed ? <Ic.ChevronRight /> : <Ic.ChevronLeft />}
           </button>
 
@@ -552,10 +555,10 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
           </div>
 
           <div className="topbar-actions">
-            <button className="topbar-icon-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+            <button className="topbar-icon-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
               {theme === 'dark' ? <Ic.Sun /> : <Ic.Moon />}
             </button>
-            <button className="topbar-icon-btn"><Ic.Bell /></button>
+            <button className="topbar-icon-btn" aria-label="Notifications"><Ic.Bell /></button>
 
             <div className="user-dropdown-wrapper" ref={dropdownRef}>
               <button

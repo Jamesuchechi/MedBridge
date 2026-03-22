@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import os
 import json
-from core.llm import get_llm_client
+from core.llm import get_llm_client, call_llm_with_fallback
 
 router = APIRouter()
 
@@ -200,8 +200,8 @@ NEVER fabricate drug names or invent interactions. If you are uncertain, state t
 """
 
 
-async def run_llm_interaction_check(client, provider: str, model: str, drugs: List[str], drug_details: List[Dict], patient_details: Optional[Dict] = None) -> Optional[Dict]:
-    """Call LLM for interaction analysis."""
+async def run_llm_interaction_check(drugs: List[str], drug_details: List[Dict], patient_details: Optional[Dict] = None) -> Optional[Dict]:
+    """Call LLM for interaction analysis with fallback."""
     user_msg = f"""Check interactions between these drugs: {', '.join(drugs)}
 
 Known drug data from our database:
@@ -212,40 +212,28 @@ Patient Context (CHRONIC CONDITIONS, ALLERGIES, EXISTING MEDS, VACCINATIONS, MED
 
 Provide interaction analysis for ALL possible pairs of the NEW drugs, AND flag any severe interactions or risks between the NEW drugs and the patient's FULL clinical history."""
 
-    try:
-        if provider in ["groq", "openai", "openrouter"]:
-            res = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": INTERACTION_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_msg}
-                ],
-                response_format={"type": "json_object"} if provider in ["groq", "openai"] else None,
-                max_tokens=1500,
-            )
-            content = res.choices[0].message.content
+    messages = [
+        {"role": "system", "content": INTERACTION_SYSTEM_PROMPT},
+        {"role": "user", "content": user_msg}
+    ]
+
+    content, provider, model = await call_llm_with_fallback(
+        messages=messages,
+        response_format={"type": "json_object"}
+    )
+
+    if content:
+        try:
             return json.loads(content[content.find('{'):content.rfind('}')+1])
-        elif provider == "mistral":
-            res = client.chat.complete(
-                model=model,
-                messages=[
-                    {"role": "system", "content": INTERACTION_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_msg}
-                ]
-            )
-            content = res.choices[0].message.content
-            return json.loads(content[content.find('{'):content.rfind('}')+1])
-    except Exception as e:
-        print(f"[LLM INTERACTION ERROR] ({provider}): {e}")
-        return None
+        except Exception as e:
+            print(f"[JSON DECODE ERROR] ({provider}): {e}")
+    return None
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
 @router.post("/interactions", response_model=InteractionResponse)
 async def check_drug_interactions(request: InteractionRequest):
-    client, provider, model = get_llm_client()
-
     # 1. Check curated known interactions first (fast, no LLM call)
     known = check_known_interactions(request.drugs)
 
@@ -254,9 +242,9 @@ async def check_drug_interactions(request: InteractionRequest):
     # 2. Only call LLM if not all pairs are covered by known interactions
     n_drugs = len(request.drugs)
     n_pairs = n_drugs * (n_drugs - 1) // 2
-    if len(known) < n_pairs and provider != "mock":
+    if len(known) < n_pairs:
         llm_result = await run_llm_interaction_check(
-            client, provider, model, request.drugs, request.drugDetails or [], request.patientDetails
+            request.drugs, request.drugDetails or [], request.patientDetails
         )
 
     # 3. Merge known + LLM results (known takes precedence)
@@ -291,16 +279,6 @@ async def check_drug_interactions(request: InteractionRequest):
 
 @router.post("/explain", response_model=DrugExplainResponse)
 async def explain_drug(request: DrugExplainRequest):
-    client, provider, model = get_llm_client()
-
-    if provider == "mock":
-        return DrugExplainResponse(
-            drugName=request.drugName,
-            explanation=f"{request.drugName} is a medication used to treat certain conditions. Please consult your pharmacist or doctor for detailed information.",
-            keyPoints=["Take as prescribed by your doctor", "Report any side effects", "Do not share medication with others"],
-            disclaimer="This is for informational purposes only."
-        )
-
     system = """You are a clinical pharmacist AI helping patients in Nigeria understand their medications.
 Explain drugs in simple, clear language that a patient with basic education can understand.
 Consider common drug use patterns in Nigeria (malaria, hypertension, diabetes, HIV).
@@ -317,39 +295,33 @@ Patient context: {request.patientContext or 'General adult patient'}
 
 Explain in simple terms what this drug is for, how to take it, and what to watch out for."""
 
-    try:
-        if provider in ["groq", "openai", "openrouter"]:
-            res = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-                response_format={"type": "json_object"} if provider in ["groq", "openai"] else None,
-                max_tokens=800,
-            )
-            content = res.choices[0].message.content
-            data = json.loads(content[content.find('{'):content.rfind('}')+1])
-        elif provider == "mistral":
-            res = client.chat.complete(
-                model=model,
-                messages=[{"role": "system", "content": system}, {"role": "user", "content": user}]
-            )
-            content = res.choices[0].message.content
-            data = json.loads(content[content.find('{'):content.rfind('}')+1])
-        else:
-            data = {"explanation": "Unable to generate explanation.", "keyPoints": [], "warning": None}
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user}
+    ]
 
-        return DrugExplainResponse(
-            drugName=request.drugName,
-            explanation=data.get("explanation", ""),
-            keyPoints=data.get("keyPoints", []),
-            warning=data.get("warning"),
-            disclaimer="This explanation is for general information only. Always follow your doctor's or pharmacist's instructions."
-        )
+    content, provider, model = await call_llm_with_fallback(
+        messages=messages,
+        response_format={"type": "json_object"},
+        max_tokens=800
+    )
 
-    except Exception as e:
-        print(f"[EXPLAIN ERROR]: {e}")
-        return DrugExplainResponse(
-            drugName=request.drugName,
-            explanation="Unable to generate explanation at this time.",
-            keyPoints=["Consult your pharmacist for detailed information"],
-            disclaimer="This is for informational purposes only."
-        )
+    if content:
+        try:
+            data = json.loads(content[content.find('{'):content.rfind('}')+1])
+            return DrugExplainResponse(
+                drugName=request.drugName,
+                explanation=data.get("explanation", ""),
+                keyPoints=data.get("keyPoints", []),
+                warning=data.get("warning"),
+                disclaimer="This explanation is for general information only. Always follow your doctor's or pharmacist's instructions."
+            )
+        except Exception as e:
+            print(f"[JSON DECODE ERROR] ({provider}): {e}")
+
+    return DrugExplainResponse(
+        drugName=request.drugName,
+        explanation="Unable to generate explanation at this time.",
+        keyPoints=["Consult your pharmacist for detailed information"],
+        disclaimer="This is for informational purposes only."
+    )

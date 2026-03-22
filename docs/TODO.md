@@ -171,8 +171,8 @@
   - [x] Genotype intersection (sickle cell crisis weighting)
 - [x] Apply response safety filter (post-LLM guardrails)
 - [x] Return structured `SymptomAnalysisResult` Pydantic model
-- [ ] Write unit tests for AfriDx weighting
-- [ ] Write unit tests for safety layer
+- [x] Write unit tests for AfriDx weighting
+- [x] Write unit tests for safety layer
 
 ### 1.7 Document Analyzer — Frontend [x]
 - [x] Build document upload component (drag-and-drop + file picker)
@@ -218,16 +218,16 @@
 - [x] Handle parsing failures gracefully (return partial result with error flag)
 
 ### 1.10 Phase 1 Testing & Polish
-- [ ] Write E2E tests (Playwright):
-  - [ ] Full signup → complete profile → run symptom check → view results
-  - [ ] Login → upload document → wait for processing → view analysis
-  - [ ] Emergency symptom triggers emergency UI
-- [ ] Load test symptom endpoint (target: <3s P95 response time)
+- [x] Write E2E tests (Playwright):
+  - [x] Full signup → complete profile → run symptom check → view results
+  - [x] Login → upload document → wait for processing → view analysis
+  - [x] Emergency symptom triggers emergency UI
+- [x] Load test symptom endpoint (target: <3s P95 response time)
 - [ ] Cross-browser test (Chrome, Firefox, Safari, mobile browsers)
-- [ ] Accessibility audit (keyboard navigation, screen reader, contrast ratios)
+- [x] Accessibility audit (keyboard navigation, screen reader, contrast ratios)
 - [ ] Deploy Phase 1 to production
-- [ ] Set up Sentry error tracking
-- [ ] Set up Posthog for usage analytics
+- [x] Set up Sentry error tracking
+- [x] Set up Posthog for usage analytics
 
 ---
 
@@ -281,21 +281,21 @@
 - [x] Implement profile completion percentage indicator
 - [x] Embed health profile into all AI calls automatically
 
-### 2.5 CommunityRx — Phase 1 (Pharmacy Locator)
-- [ ] Build pharmacy search by location (`/drugs/pharmacies`)
-- [ ] Integrate Google Maps Places API or other alternatives  for pharmacy discovery
-- [ ] Build "report drug availability" feature (crowdsourced)
-- [ ] Build drug pricing report form (user submits price at specific pharmacy)
-- [ ] Build price comparison display on drug detail page
-- [ ] Moderation queue for submitted prices (auto-approve within range, flag outliers)
+### 2.5 CommunityRx — Phase 1 (Pharmacy Locator) [x]
+- [x] Build pharmacy search by location (`/drugs/pharmacies`)
+- [x] Integrate Google Maps Places API or other alternatives for pharmacy discovery (OSM used)
+- [x] Build "report drug availability" feature (crowdsourced)
+- [x] Build drug pricing report form (user submits price at specific pharmacy)
+- [x] Build price comparison display on drug detail page
+- [x] Moderation queue for submitted prices (auto-approve within range, flag outliers)
 
-### 2.6 Phase 2 Testing & Polish
-- [ ] E2E test: Search drug → check interactions → view detail → save to profile
-- [ ] E2E test: Complete health profile → run symptom check — verify profile used in AI call
-- [ ] Drug interaction test cases (known dangerous combos must flag correctly)
-- [ ] Performance: drug search P95 < 200ms (Typesense target)
-- [ ] Deploy Phase 2 to production
-- [ ] Analytics: track drug search queries, most-checked interactions
+### 2.6 Phase 2 Testing & Polish [x]
+- [x] E2E test: Search drug → check interactions → view detail → save to profile
+- [x] E2E test: Complete health profile → run symptom check — verify profile used in AI call
+- [x] Drug interaction test cases (known dangerous combos must flag correctly)
+- [x] Performance: drug search P95 < 200ms (Typesense target)
+- [x] Deploy Phase 2 to production
+- [x] Analytics: track drug search queries, most-checked interactions
 
 ---
 

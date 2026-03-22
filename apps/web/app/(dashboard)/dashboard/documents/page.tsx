@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { ResultView } from "@/components/documents/ResultView";
 import { MedDocument } from "@/types/documents";
 import { api } from "@/lib/api";
+import { getSocket } from "@/lib/socket";
 import { I } from "@/components/ui/icons"; // Assuming icons are here or I'll define them
 
 export default function DocumentsPage() {
@@ -33,6 +34,23 @@ export default function DocumentsPage() {
   useEffect(() => {
     fetchDocs();
   }, [fetchDocs]);
+
+  useEffect(() => {
+    if (user?.id) {
+      const socket = getSocket(user.id);
+      if (socket) {
+        socket.on("document:analyzed", (updatedDoc: MedDocument) => {
+          setDocs(prev => prev.map(d => d.id === updatedDoc.id ? updatedDoc : d));
+          if (currentDoc?.id === updatedDoc.id) {
+            setCurrentDoc(updatedDoc);
+          }
+        });
+        return () => {
+          socket.off("document:analyzed");
+        };
+      }
+    }
+  }, [user?.id, currentDoc?.id]);
 
   const handleSelectDoc = (doc: MedDocument) => {
     setCurrentDoc(doc);

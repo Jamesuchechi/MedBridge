@@ -5,7 +5,7 @@ import os
 import json
 from openai import OpenAI
 
-from core.llm import get_llm_client
+from core.llm import get_llm_client, call_llm_with_fallback
 
 router = APIRouter()
 
@@ -81,46 +81,44 @@ Identify any follow-up actions in 'recommendations'.
 
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_document(req: AnalysisRequest):
-    client, provider, model = get_llm_client(require_vision=True)
-    
-    if client is None:
-        raise HTTPException(status_code=500, detail="No vision-capable LLM provider available")
-
     # Select prompt based on docType
     system_prompt = PROMPTS.get(req.docType, BASE_PROMPT)
 
-    try:
-        # 1. Call LLM with Vision
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
+    messages = [
+        {
+            "role": "system",
+            "content": system_prompt
+        },
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": f"Analyze this {req.docType} document and extract all relevant information into the specified JSON format."},
                 {
-                    "role": "system",
-                    "content": system_prompt
+                    "type": "image_url",
+                    "image_url": {
+                        "url": req.fileUrl,
+                    },
                 },
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": f"Analyze this {req.docType} document and extract all relevant information into the specified JSON format."},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": req.fileUrl,
-                            },
-                        },
-                    ],
-                }
             ],
-            response_format={"type": "json_object"} if provider != "mistral" else None,
-            max_tokens=2000,
+        }
+    ]
+
+    try:
+        content, provider, model = await call_llm_with_fallback(
+            messages=messages,
+            require_vision=True,
+            response_format={"type": "json_object"},
+            max_tokens=2000
         )
 
-        result_text = response.choices[0].message.content
+        if not content:
+            raise HTTPException(status_code=500, detail="Failed to analyze document with any available model")
+
         # Manual extraction in case LLM wraps it in markdown code blocks
-        if result_text.startswith("```"):
-            result_text = result_text[result_text.find("{"):result_text.rfind("}")+1]
+        if content.startswith("```"):
+            content = content[content.find("{"):content.rfind("}")+1]
         
-        result_json = json.loads(result_text)
+        result_json = json.loads(content)
 
         # 2. Add some metadata
         result_json["processingTime"] = 3800 # Placeholder for actual time measure if needed

@@ -43,7 +43,12 @@ const fs_1 = __importDefault(require("fs"));
 const sync_1 = require("csv-parse/sync");
 const XLSX = __importStar(require("xlsx"));
 const db_1 = require("@medbridge/db");
+const stream_chain_1 = require("stream-chain");
+const stream_json_1 = require("stream-json");
+const Pick_1 = require("stream-json/filters/Pick");
+const StreamArray_1 = require("stream-json/streamers/StreamArray");
 const SEED_DIR = path_1.default.join(__dirname, "../../../../packages/db/seed");
+const LOCK_FILE = path_1.default.join(SEED_DIR, ".import.lock");
 async function importNigerianCSV() {
     const csvPath = path_1.default.join(SEED_DIR, "medbridge_drugs.csv");
     if (!fs_1.default.existsSync(csvPath))
@@ -82,42 +87,58 @@ async function importFDAJson() {
     const jsonPath = path_1.default.join(SEED_DIR, "drug-drugs-data.json");
     if (!fs_1.default.existsSync(jsonPath))
         return;
-    console.log("🌎 Importing FDA Global Dataset (drug-drugs-data.json) with batching...");
-    const data = JSON.parse(fs_1.default.readFileSync(jsonPath, "utf-8"));
-    let batch = [];
-    let count = 0;
-    for (const r of data.results) {
-        const mainProd = r.products?.[0];
-        if (!mainProd)
-            continue;
-        batch.push({
-            name: mainProd.brand_name || mainProd.active_ingredients?.[0]?.name || "UNKNOWN",
-            genericName: mainProd.active_ingredients?.[0]?.name || mainProd.brand_name || "UNKNOWN",
-            manufacturer: r.sponsor_name,
-            form: mainProd.dosage_form,
-            strength: mainProd.active_ingredients?.[0]?.strength,
-            requiresPrescription: mainProd.marketing_status === "Prescription",
-            category: "General Medicine",
+    console.log("🌎 Importing FDA Global Dataset (drug-drugs-data.json) with streaming...");
+    return new Promise((resolve, reject) => {
+        let batch = [];
+        let count = 0;
+        const pipeline = (0, stream_chain_1.chain)([
+            fs_1.default.createReadStream(jsonPath),
+            (0, stream_json_1.parser)(),
+            (0, Pick_1.pick)({ filter: "results" }),
+            (0, StreamArray_1.streamArray)()
+        ]);
+        pipeline.on("data", async (data) => {
+            const r = data.value;
+            const mainProd = r.products?.[0];
+            if (!mainProd)
+                return;
+            batch.push({
+                name: mainProd.brand_name || mainProd.active_ingredients?.[0]?.name || "UNKNOWN",
+                genericName: mainProd.active_ingredients?.[0]?.name || mainProd.brand_name || "UNKNOWN",
+                manufacturer: r.sponsor_name,
+                form: mainProd.dosage_form,
+                strength: mainProd.active_ingredients?.[0]?.strength,
+                requiresPrescription: mainProd.marketing_status === "Prescription",
+                category: "General Medicine",
+            });
+            if (batch.length >= 200) {
+                pipeline.pause();
+                try {
+                    await db_1.db.insert(db_1.drugs).values(batch).onConflictDoNothing();
+                    count += batch.length;
+                    if (count % 1000 === 0)
+                        console.log(`FDA progress: ${count}...`);
+                }
+                catch (err) {
+                    console.warn("Batch insert failed:", err instanceof Error ? err.message : String(err));
+                }
+                batch = [];
+                pipeline.resume();
+            }
         });
-        if (batch.length >= 100) {
-            try {
+        pipeline.on("end", async () => {
+            if (batch.length > 0) {
                 await db_1.db.insert(db_1.drugs).values(batch).onConflictDoNothing();
                 count += batch.length;
-                if (count % 1000 === 0)
-                    console.log(`FDA progress: ${count}...`);
             }
-            catch (err) {
-                console.warn("Batch insert failed:", err instanceof Error ? err.message : String(err));
-            }
-            batch = [];
-        }
-    }
-    // Remaining
-    if (batch.length > 0) {
-        await db_1.db.insert(db_1.drugs).values(batch).onConflictDoNothing();
-        count += batch.length;
-    }
-    console.log(`✅ FDA Import Done: ${count} records.`);
+            console.log(`✅ FDA Import Done: ${count} records.`);
+            resolve();
+        });
+        pipeline.on("error", (err) => {
+            console.error("Pipeline error:", err);
+            reject(err);
+        });
+    });
 }
 async function importCleanedXLS() {
     const xlsPath = path_1.default.join(SEED_DIR, "drugs_cleaned_dataset.xls");
@@ -148,10 +169,26 @@ async function importCleanedXLS() {
     console.log(`✅ XLS Import Done: ${count} records.`);
 }
 async function main() {
-    await importNigerianCSV();
-    await importCleanedXLS();
-    await importFDAJson();
-    console.log("🎉 ALL DATASETS PROCESSED SUCCESSFULLY!");
+    if (fs_1.default.existsSync(LOCK_FILE)) {
+        console.warn("⚠️ Import lock file found. Another import may be running. Exiting...");
+        process.exit(1);
+    }
+    fs_1.default.writeFileSync(LOCK_FILE, new Date().toISOString());
+    try {
+        await importNigerianCSV();
+        await importCleanedXLS();
+        await importFDAJson();
+        console.log("🎉 ALL DATASETS PROCESSED SUCCESSFULLY!");
+    }
+    finally {
+        if (fs_1.default.existsSync(LOCK_FILE))
+            fs_1.default.unlinkSync(LOCK_FILE);
+    }
     process.exit(0);
 }
-main().catch(err => { console.error("Import failed:", err); process.exit(1); });
+main().catch(err => {
+    console.error("Import failed:", err);
+    if (fs_1.default.existsSync(LOCK_FILE))
+        fs_1.default.unlinkSync(LOCK_FILE);
+    process.exit(1);
+});

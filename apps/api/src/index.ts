@@ -1,4 +1,10 @@
+import * as Sentry from "@sentry/node";
 import "./env";
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN || "https://placeholder@sentry.io/medbridge-api",
+  tracesSampleRate: 1.0,
+});
 import express, { Request, Response } from "express";
 import http from "http";
 import cors from "cors";
@@ -12,6 +18,8 @@ import { initSocket } from "./lib/socket";
 import profileRoutes from "./routes/profile";
 import symptomRoutes from "./routes/symptoms";
 import documentRoutes from "./routes/documents";
+import pharmaciesRoutes from "./routes/pharmacies";
+import drugRoutes from "./routes/drugs";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -33,6 +41,8 @@ app.use("/api/", limiter);
 app.use("/api/v1/profile", profileRoutes);
 app.use("/api/v1/symptoms", symptomRoutes);
 app.use("/api/v1/documents", documentRoutes);
+app.use("/api/v1/pharmacies", pharmaciesRoutes);
+app.use("/api/v1/drugs", drugRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });

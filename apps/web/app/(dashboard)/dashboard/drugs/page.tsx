@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/auth.store";
+import { DrugPriceComparison } from "@/components/drugs/DrugPriceComparison";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Drug {
@@ -176,12 +177,15 @@ const CSS = `
 .di-check-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(61,155,255,.35); }
 .di-check-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 .di-severity-banner { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-radius: 14px; margin-bottom: 16px; }
+.di-severity-banner svg { width: 22px; height: 22px; flex-shrink: 0; }
 .sev-none           { background: rgba(0,229,160,.08); border: 1px solid rgba(0,229,160,.2); color: var(--accent); }
 .sev-minor          { background: rgba(255,184,0,.08); border: 1px solid rgba(255,184,0,.2); color: #ffb800; }
 .sev-moderate       { background: rgba(255,124,43,.08); border: 1px solid rgba(255,124,43,.25); color: #ff7c2b; }
 .sev-severe         { background: rgba(255,59,59,.1); border: 1.5px solid rgba(255,59,59,.3); color: #ff3b3b; }
 .sev-contraindicated{ background: rgba(180,0,0,.15); border: 2px solid rgba(255,0,0,.5); color: #ff0000; }
-.di-disclaimer-box { font-size: 11px; color: var(--text3); padding: 12px 14px; background: rgba(61,155,255,.05); border: 1px solid rgba(61,155,255,.12); border-radius: 10px; line-height: 1.6; margin-top: 16px; }
+.di-check-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+.di-disclaimer-box { display: flex; align-items: flex-start; gap: 10px; font-size: 11px; color: var(--text3); padding: 12px 14px; background: rgba(61,155,255,.05); border: 1px solid rgba(61,155,255,.12); border-radius: 10px; line-height: 1.6; margin-top: 16px; }
+.di-disclaimer-box svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; opacity: .6; }
 
 /* AI Modal */
 .di-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; animation: di-fade-in .2s ease; }
@@ -195,10 +199,15 @@ const CSS = `
 .di-ai-body { padding: 0 32px 40px; }
 .di-ai-box { background: rgba(61,155,255,.05); border: 1px solid rgba(61,155,255,.12); border-radius: 16px; padding: 20px; margin-bottom: 24px; line-height: 1.6; font-size: 14px; color: var(--text); }
 .di-explain-keypoint { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; font-size: 13.5px; color: var(--text2); }
-.di-explain-keypoint svg { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+.di-explain-keypoint svg { width: 14px; height: 14px; color: var(--accent); flex-shrink: 0; margin-top: 3px; }
 .di-explain-warning { display: flex; gap: 12px; padding: 14px 18px; background: rgba(255,59,59,.08); border: 1px solid rgba(255,59,59,.2); border-radius: 12px; color: #ff5c5c; font-size: 13px; font-weight: 500; margin-bottom: 24px; }
+.di-explain-warning svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
 .di-ai-btn { width: 100%; padding: 14px; background: rgba(0,229,160,.1); border: 1px solid rgba(0,229,160,.2); color: var(--accent); border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all .2s; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.di-ai-btn svg { width: 16px; height: 16px; }
 .di-ai-btn:hover { background: rgba(0,229,160,.18); transform: translateY(-2px); }
+.di-back-btn svg { width: 16px; height: 16px; }
+
+
 `;
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -274,6 +283,8 @@ function DrugDetail({ drug, onBack, onExplain }: { drug: Drug; onBack: () => voi
           </div>
         </div>
       )}
+
+      <DrugPriceComparison drugId={drug.id} drugName={drug.name} />
 
       <div className="di-detail-grid">
         {drug.uses.length > 0 && (

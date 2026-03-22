@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { MedDocument, FlagLevel } from "@/types/documents";
 import { I } from "@/components/ui/icons";
-import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/auth.store";
 import { getSocket } from "@/lib/socket";
 
@@ -24,26 +23,7 @@ export function ResultView({ doc, onBack }: { doc: MedDocument; onBack: () => vo
   const [flagFilter, setFlagFilter] = useState<FlagLevel | "all">("all");
   const user = useAuthStore((state) => state.user);
 
-  const pollStatus = useCallback(async () => {
-    if (!user) return;
-    try {
-      const updatedDoc = await api.get<MedDocument>(`/api/v1/documents/${doc.id}`, {
-        headers: { "x-user-id": user.id }
-      });
-      if (updatedDoc.status !== currentDoc.status) {
-        setCurrentDoc(updatedDoc);
-      }
-    } catch (err) {
-      console.error("Polling failed", err);
-    }
-  }, [doc.id, currentDoc.status, user]);
-
-  useEffect(() => {
-    if (currentDoc.status === "pending" || currentDoc.status === "processing") {
-      const interval = setInterval(pollStatus, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [currentDoc.status, pollStatus]);
+  // Removed polling logic in favor of optimized WebSockets
 
   useEffect(() => {
     if (user?.id) {

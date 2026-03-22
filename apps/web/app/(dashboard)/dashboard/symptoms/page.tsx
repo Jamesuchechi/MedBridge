@@ -547,13 +547,20 @@ function SymptomTagInput({ symptoms, setSymptoms }: { symptoms: string[]; setSym
         {symptoms.map(s => (
           <span key={s} className="sc-tag">
             {s}
-            <span className="sc-tag-remove" onClick={() => setSymptoms(symptoms.filter(x => x !== s))}><Ic.X /></span>
+            <button className="sc-tag-remove" onClick={() => setSymptoms(symptoms.filter(x => x !== s))} aria-label={`Remove ${s}`}><Ic.X /></button>
           </span>
         ))}
         <input
           ref={inputRef}
+          id="symptom-input"
+          role="combobox"
           className="sc-tag-text-input"
           placeholder="Add symptom..."
+          aria-label="Add symptom to analysis"
+          aria-expanded={open && filtered.length > 0}
+          aria-haspopup="listbox"
+          aria-controls="symptom-results"
+          aria-autocomplete="list"
           value={query}
           onChange={e => { setQuery(e.target.value); setOpen(true); }}
           onKeyDown={handleKeyDown}
@@ -561,9 +568,15 @@ function SymptomTagInput({ symptoms, setSymptoms }: { symptoms: string[]; setSym
         />
       </div>
       {open && filtered.length > 0 && (
-        <div className="sc-autocomplete">
+        <div id="symptom-results" className="sc-autocomplete" role="listbox">
           {filtered.map(item => (
-            <div key={item} className="sc-autocomplete-item" onMouseDown={() => add(item)}>
+            <div 
+              key={item} 
+              className="sc-autocomplete-item" 
+              onMouseDown={() => add(item)}
+              role="option"
+              aria-selected="false"
+            >
               <div className="sc-autocomplete-item-dot" /> {item}
             </div>
           ))}
@@ -718,9 +731,23 @@ export default function SymptomCheckerPage() {
           <p className="sc-subtitle">AI-powered analysis for Nigerian & West African health regional contexts.</p>
         </div>
 
-        <div className="sc-tabs">
-          <button className={`sc-tab ${tab === "check" ? "active" : ""}`} onClick={() => setTab("check")}>Check</button>
-          <button className={`sc-tab ${tab === "history" ? "active" : ""}`} onClick={() => setTab("history")}>History ({history.length})</button>
+        <div className="sc-tabs" role="tablist" aria-label="Checker views">
+          <button 
+            className={`sc-tab ${tab === "check" ? "active" : ""}`} 
+            onClick={() => setTab("check")}
+            role="tab"
+            aria-selected={tab === "check"}
+          >
+            Check
+          </button>
+          <button 
+            className={`sc-tab ${tab === "history" ? "active" : ""}`} 
+            onClick={() => setTab("history")}
+            role="tab"
+            aria-selected={tab === "history"}
+          >
+            History ({history.length})
+          </button>
         </div>
 
         {tab === "check" && (
@@ -733,21 +760,42 @@ export default function SymptomCheckerPage() {
                 </div>
 
                 <div className="sc-card">
-                  <div className="sc-card-title"><Ic.Clock /> Duration</div>
-                  <div className="sc-duration-row">
-                    <input className="sc-duration-input" type="number" value={duration} onChange={e => setDuration(e.target.value)} />
+                  <div className="sc-card-title" id="duration-label"><Ic.Clock /> Duration</div>
+                  <div className="sc-duration-row" aria-labelledby="duration-label">
+                    <input 
+                      className="sc-duration-input" 
+                      type="number" 
+                      value={duration} 
+                      onChange={e => setDuration(e.target.value)} 
+                      aria-label="Duration value"
+                    />
                     {["hours", "days", "weeks"].map(u => (
-                      <button key={u} className={`sc-unit-btn ${durationUnit === u ? "active" : ""}`} onClick={() => setDurationUnit(u as typeof durationUnit)}>{u}</button>
+                      <button 
+                        key={u} 
+                        className={`sc-unit-btn ${durationUnit === u ? "active" : ""}`} 
+                        onClick={() => setDurationUnit(u as typeof durationUnit)}
+                        aria-pressed={durationUnit === u}
+                      >
+                        {u}
+                      </button>
                     ))}
                   </div>
                 </div>
 
                   <div className="sc-card">
-                    <div className="sc-card-title"><Ic.HeartPulse /> Severity</div>
+                    <div className="sc-card-title" id="severity-label"><Ic.HeartPulse /> Severity</div>
                     <div className="sc-slider-wrap">
-                      <input className="sc-slider" type="range" min="1" max="10" value={severity} onChange={e => setSeverity(Number(e.target.value))} />
-                      <div className="sc-severity-labels"><span>Mild</span><span>Critical</span></div>
-                      <div className="sc-severity-value">{severity}</div>
+                      <input 
+                        className="sc-slider" 
+                        type="range" 
+                        min="1" 
+                        max="10" 
+                        value={severity} 
+                        onChange={e => setSeverity(Number(e.target.value))} 
+                        aria-labelledby="severity-label"
+                      />
+                      <div className="sc-severity-labels" aria-hidden="true"><span>Mild</span><span>Critical</span></div>
+                      <div className="sc-severity-value" aria-hidden="true">{severity}</div>
                     </div>
                   </div>
 
@@ -758,9 +806,10 @@ export default function SymptomCheckerPage() {
                         className={`sc-toggle-btn ${hasFever ? "active" : ""}`} 
                         onClick={() => setHasFever(!hasFever)}
                         style={{ "--toggle-color": "var(--warn)" } as CSSProperties}
+                        aria-pressed={hasFever}
                       >
-                        <Ic.Thermometer /> Fever
-                        <div className="sc-toggle-indicator">{hasFever && <Ic.Check />}</div>
+                        <Ic.Thermometer aria-hidden="true" /> Fever
+                        <div className="sc-toggle-indicator" aria-hidden="true">{hasFever && <Ic.Check />}</div>
                       </button>
                     </div>
                     
@@ -781,10 +830,11 @@ export default function SymptomCheckerPage() {
                     </div>
 
                     <div className="sc-location-wrap">
-                      <div className="sc-location-icon"><Ic.MapPin /></div>
+                      <div className="sc-location-icon" aria-hidden="true"><Ic.MapPin /></div>
                       <input 
                         className="sc-input" 
                         placeholder="Your location (e.g. Lagos, Nigeria)" 
+                        aria-label="Your location"
                         value={location} 
                         onChange={e => setLocation(e.target.value)} 
                       />

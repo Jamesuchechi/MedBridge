@@ -1,10 +1,8 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
-  // Enable React strict mode for better development experience
   reactStrictMode: true,
-
-  // Image optimization - add domains as needed
   images: {
     remotePatterns: [
       {
@@ -17,21 +15,27 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-
-  // Expose public environment variables to the browser
   env: {
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || "MedBridge",
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   },
-
-  // Experimental features for Next.js 15
   experimental: {
-    // optimizePackageImports for faster dev builds
     optimizePackageImports: ["lucide-react", "recharts", "@radix-ui/react-icons"],
   },
-
-  // Redirect trailing slashes
   trailingSlash: false,
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  org: "jamesuchechi",
+  project: "javascript-nextjs",
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+    automaticVercelMonitors: true,
+  },
+});

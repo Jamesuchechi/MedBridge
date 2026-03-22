@@ -10,7 +10,7 @@ from jinja2 import Template
 from core.afridx import apply_afridx_weighting
 
 router = APIRouter()
-from core.llm import get_llm_client
+from core.llm import get_llm_client, call_llm_with_fallback
 
 # ─── Models ───────────────────────────────────────────────────────────────────
 
@@ -58,8 +58,8 @@ AFRIDX_INSIGHTS = {
 
 # Shared LLM client moved to core/llm.py
 
-async def run_llm_analysis(client, provider, model, prompt_data):
-    """Executes the LLM call based on the provider."""
+async def run_llm_analysis(prompt_data: Dict[str, Any]) -> Optional[Dict]:
+    """Executes the LLM call with fallback."""
     # Load prompt template
     prompt_path = os.path.join(os.path.dirname(__file__), "../prompts/symptom_analysis/v1.j2")
     with open(prompt_path, "r") as f:
@@ -68,36 +68,23 @@ async def run_llm_analysis(client, provider, model, prompt_data):
     system_prompt = template.render(**prompt_data)
     user_prompt = "Provide analysis for the symptoms reported above in JSON format."
 
-    try:
-        if provider == "groq":
-            res = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-                response_format={"type": "json_object"}
-            )
-            return json.loads(res.choices[0].message.content)
-        
-        elif provider == "mistral":
-            res = client.chat.complete(
-                model=model,
-                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
-            )
-            # Mistral doesn't always support response_format easily in all versions, so we parse manually
-            content = res.choices[0].message.content
-            return json.loads(content[content.find('{'):content.rfind('}')+1])
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
 
-        elif provider in ["openai", "openrouter"]:
-            res = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-                response_format={"type": "json_object"} if provider == "openai" else None
-            )
-            content = res.choices[0].message.content
+    content, provider, model = await call_llm_with_fallback(
+        messages=messages,
+        response_format={"type": "json_object"}
+    )
+
+    if content:
+        try:
             return json.loads(content[content.find('{'):content.rfind('}')+1])
-            
-    except Exception as e:
-        print(f"LLM Error ({provider}):", str(e))
-        return None
+        except Exception as e:
+            print(f"JSON Decode Error ({provider}): {e}")
+    
+    return None
 
 @router.post("/analyze", response_model=SymptomAnalysisResult)
 async def analyze_symptoms(request: SymptomAnalysisRequest):
@@ -119,10 +106,10 @@ async def analyze_symptoms(request: SymptomAnalysisRequest):
             disclaimer="EMERGENCY ALERT: This is not a diagnosis. Seek help now."
         )
 
-    # 2. Run LLM Analysis if available
+    # 2. Run LLM Analysis with fallback
     llm_result = None
-    if provider != "mock" and os.getenv("USE_MOCK_LLM") != "true":
-        llm_result = await run_llm_analysis(client, provider, model, request.dict())
+    if os.getenv("USE_MOCK_LLM") != "true":
+        llm_result = await run_llm_analysis(request.model_dump())
 
     # 3. Rule-based fallback or post-processing
     if not llm_result:

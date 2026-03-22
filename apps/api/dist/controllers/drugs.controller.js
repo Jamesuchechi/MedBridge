@@ -75,17 +75,18 @@ function parseJsonArray(val) {
     }
 }
 function formatDrug(drug) {
+    const d = drug;
     return {
-        ...drug,
-        brandNames: parseJsonArray(drug.brandNames),
-        uses: parseJsonArray(drug.uses),
-        contraindications: parseJsonArray(drug.contraindications),
-        sideEffects: parseJsonArray(drug.sideEffects),
-        interactions: parseJsonArray(drug.interactions),
-        icdIndications: parseJsonArray(drug.icdIndications),
-        priceDisplay: drug.priceRangeMin
-            ? `₦${drug.priceRangeMin.toLocaleString()} – ₦${drug.priceRangeMax.toLocaleString()}`
-            : drug.priceRange || "Price unavailable",
+        ...d,
+        brandNames: parseJsonArray(d.brandNames),
+        uses: parseJsonArray(d.uses),
+        contraindications: parseJsonArray(d.contraindications),
+        sideEffects: parseJsonArray(d.sideEffects),
+        interactions: parseJsonArray(d.interactions),
+        icdIndications: parseJsonArray(d.icdIndications),
+        priceDisplay: d.priceRangeMin
+            ? `₦${d.priceRangeMin.toLocaleString()} – ₦${d.priceRangeMax.toLocaleString()}`
+            : d.priceRange || "Price unavailable",
     };
 }
 // ─── SEARCH ───────────────────────────────────────────────────────────────────

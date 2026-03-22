@@ -12,3 +12,6 @@ lxml
 tqdm
 psycopg2-binary
 pandas
+pytest
+pytest-mock
+httpx

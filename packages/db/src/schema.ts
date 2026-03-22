@@ -111,3 +111,69 @@ export const drugQueryLogs = pgTable("drug_query_logs", {
   queryType: text("query_type").notNull(), // search, detail, interaction, explanation
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ─── Pharmacies ──────────────────────────────────────────────────────────────
+export const pharmacies = pgTable("pharmacies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  state: text("state").notNull(),
+  lga: text("lga"),
+  phone: text("phone"),
+  email: text("email"),
+  lat: integer("lat"), // Storing as integer (e.g. multiplied by 10^7) or double precision
+  lng: integer("lng"),
+  osmId: text("osm_id").unique(),
+  osmType: text("osm_type"), // 'node' | 'way' | 'relation'
+  openingHours: text("opening_hours"),
+  website: text("website"),
+  isVerified: boolean("is_verified").default(false),
+  isClosed: boolean("is_closed").default(false),
+  trustScore: integer("trust_score").default(50),
+  reportCount: integer("report_count").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ─── Drug Availability Reports ────────────────────────────────────────────────
+export const drugAvailabilityReports = pgTable("drug_availability_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  pharmacyId: uuid("pharmacy_id").notNull().references(() => pharmacies.id, { onDelete: "cascade" }),
+  drugId: uuid("drug_id").references(() => drugs.id, { onDelete: "set null" }),
+  drugName: text("drug_name").notNull(),
+  isInStock: boolean("is_in_stock").notNull(),
+  reportedBy: text("reported_by"), // user_id
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Drug Price Reports ───────────────────────────────────────────────────────
+export const drugPriceReports = pgTable("drug_price_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  pharmacyId: uuid("pharmacy_id").notNull().references(() => pharmacies.id, { onDelete: "cascade" }),
+  drugId: uuid("drug_id").references(() => drugs.id, { onDelete: "set null" }),
+  drugName: text("drug_name").notNull(),
+  price: integer("price").notNull(),
+  quantity: text("quantity"),
+  reportedBy: text("reported_by"), // user_id
+  moderationStatus: text("moderation_status").default("pending").notNull(),
+  flagReason: text("flag_reason"),
+  moderatedBy: text("moderated_by"),
+  moderationNote: text("moderation_note"),
+  moderatedAt: timestamp("moderated_at"),
+  isAutoFlagged: boolean("is_auto_flagged").default(false),
+  autoFlagReason: text("auto_flag_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Moderation Audit Log ─────────────────────────────────────────────────────
+export const moderationAuditLog = pgTable("moderation_audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  reportId: uuid("report_id").notNull().references(() => drugPriceReports.id, { onDelete: "cascade" }),
+  adminId: text("admin_id").notNull(),
+  action: text("action").notNull(),
+  previousStatus: text("previous_status"),
+  newStatus: text("new_status"),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

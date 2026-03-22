@@ -1,0 +1,8 @@
+
+
+> @medbridge/ai-service@0.1.0 lint /home/jamesuchechi/Projects/MedBridge/apps/ai-service
+> ./venv/bin/ruff check .
+
+sh: 1: ./venv/bin/ruff: not found
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed.[39m
+[43m[30m WARN [39m[49m  Local package.json exists, but node_modules missing, did you mean to install?
