@@ -43,7 +43,7 @@ export async function middleware(request: NextRequest) {
     try {
       const { data } = await supabase.auth.getSession()
       user = data.session?.user || null
-    } catch (e) {
+    } catch {
       // Ignored
     }
   }

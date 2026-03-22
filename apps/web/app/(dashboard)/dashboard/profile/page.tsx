@@ -17,6 +17,8 @@ interface ProfileData {
   allergies: Allergy[];
   medications: Medication[];
   familyHistory: string[];
+  vaccinations: string[];
+  medicalHistory: string[];
   emergencyName: string; emergencyPhone: string; emergencyRelation: string;
 }
 
@@ -27,6 +29,7 @@ const EMPTY_PROFILE: ProfileData = {
   firstName: "", lastName: "", dob: "", sex: "", phone: "", state: "", lga: "",
   bloodType: "", genotype: "", weight: "", height: "",
   chronicConditions: [], allergies: [], medications: [], familyHistory: [],
+  vaccinations: [], medicalHistory: [],
   emergencyName: "", emergencyPhone: "", emergencyRelation: "",
 };
 
@@ -41,14 +44,18 @@ const FAMILY_HISTORY = ["Hypertension","Diabetes","Sickle Cell","Heart Disease",
 const ALLERGY_REACTIONS = ["Rash","Swelling","Difficulty breathing","Anaphylaxis","Nausea","Hives","Itching","Other"];
 const FREQ_OPTIONS = ["Once daily","Twice daily","Three times daily","Every 6 hours","Every 8 hours","Weekly","As needed"];
 const RELATIONS = ["Spouse","Parent","Sibling","Child","Aunt/Uncle","Friend","Colleague","Other"];
+const VACCINATIONS = ["BCG (Tuberculosis)","OPV (Polio)","Pentavalent (DPT, HepB, Hib)","PCV (Pneumococcal)","Rotavirus","Vitamin A","Measles","Yellow Fever","Meningitis","COVID-19","HPV","Hepatitis B (Adult)","Typhoid","Tetanus Toxoid"];
+const SURGERIES = ["Appendectomy","Cesarean Section","Hernia Repair","Gallbladder Removal","Hysterectomy","Cataract Surgery","Orthopedic Surgery","Heart Surgery","Other"];
 
 const STEPS = [
   { id: 1, key: "personal",    label: "Personal",      short: "You",       color: "#00e5a0" },
   { id: 2, key: "clinical",    label: "Clinical data", short: "Clinical",  color: "#3d9bff" },
-  { id: 3, key: "conditions",  label: "Conditions",    short: "History",   color: "#c77dff" },
+  { id: 3, key: "conditions",  label: "Conditions",    short: "Health",    color: "#c77dff" },
   { id: 4, key: "medications", label: "Medications",   short: "Meds",      color: "#ff9f43" },
   { id: 5, key: "family",      label: "Family history",short: "Family",    color: "#ff6b9d" },
-  { id: 6, key: "emergency",   label: "Emergency",     short: "SOS",       color: "#ff5c5c" },
+  { id: 6, key: "vaccines",    label: "Vaccinations",  short: "Vaccines",  color: "#4ecdc4" },
+  { id: 7, key: "history",     label: "Medical History",short: "History",   color: "#feca57" },
+  { id: 8, key: "emergency",   label: "Emergency",     short: "SOS",       color: "#ff5c5c" },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -198,8 +205,10 @@ function calcCompletion(p: ProfileData): number {
   if (p.allergies.length > 0) bonus += 5;
   if (p.medications.length > 0) bonus += 5;
   if (p.familyHistory.length > 0) bonus += 5;
+  if (p.vaccinations.length > 0) bonus += 5;
+  if (p.medicalHistory.length > 0) bonus += 5;
   if (p.emergencyName && p.emergencyPhone) bonus += 10;
-  return Math.min(100, Math.round((filled / fields.length) * 70) + bonus);
+  return Math.min(100, Math.round((filled / fields.length) * 60) + bonus);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -333,6 +342,44 @@ function StepFamily({ data, set }: { data: ProfileData; set: (p: Partial<Profile
   );
 }
 
+function StepVaccinations({ data, set }: { data: ProfileData; set: (p: Partial<ProfileData>) => void }) {
+  const toggle = (v: string) => set({ vaccinations: data.vaccinations.includes(v) ? data.vaccinations.filter(x => x !== v) : [...data.vaccinations, v] });
+  return (
+    <div className="hp-section">
+      <div className="hp-section-header">
+        <div className="hp-section-icon" style={{ background: "rgba(78,205,196,.12)", color: "#4ecdc4" }}><Ic.Shield /></div>
+        <div><div className="hp-section-title">Vaccination Record</div><div className="hp-section-sub">Immunization history for better risk profiling</div></div>
+      </div>
+      <div className="hp-tag-grid">
+        {VACCINATIONS.map(v => (
+          <button key={v} type="button" className={`hp-tag ${data.vaccinations.includes(v) ? "selected" : ""}`} style={{"--tag-color":"#4ecdc4"} as React.CSSProperties} onClick={() => toggle(v)}>
+            <div className="hp-tag-check">{data.vaccinations.includes(v) && <Ic.Check />}</div>{v}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StepHistory({ data, set }: { data: ProfileData; set: (p: Partial<ProfileData>) => void }) {
+  const toggle = (s: string) => set({ medicalHistory: data.medicalHistory.includes(s) ? data.medicalHistory.filter(x => x !== s) : [...data.medicalHistory, s] });
+  return (
+    <div className="hp-section">
+      <div className="hp-section-header">
+        <div className="hp-section-icon" style={{ background: "rgba(254,202,87,.12)", color: "#feca57" }}><Ic.Activity /></div>
+        <div><div className="hp-section-title">Medical & Surgical History</div><div className="hp-section-sub">Past major illnesses, surgeries, or hospitalizations</div></div>
+      </div>
+      <div className="hp-tag-grid">
+        {SURGERIES.map(s => (
+          <button key={s} type="button" className={`hp-tag ${data.medicalHistory.includes(s) ? "selected" : ""}`} style={{"--tag-color":"#feca57"} as React.CSSProperties} onClick={() => toggle(s)}>
+            <div className="hp-tag-check">{data.medicalHistory.includes(s) && <Ic.Check />}</div>{s}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StepEmergency({ data, set }: { data: ProfileData; set: (p: Partial<ProfileData>) => void }) {
   return (
     <div className="hp-section">
@@ -394,6 +441,8 @@ export default function HealthProfileSetup() {
             allergies: JSON.parse(profile.allergies || "[]"),
             medications: JSON.parse(profile.medications || "[]"),
             familyHistory: JSON.parse(profile.familyHistory || "[]"),
+            vaccinations: JSON.parse(profile.vaccinations || "[]"),
+            medicalHistory: JSON.parse(profile.medicalHistory || "[]"),
             emergencyName: profile.emergencyName || "",
             emergencyPhone: profile.emergencyPhone || "",
             emergencyRelation: profile.emergencyRelation || "",
@@ -412,6 +461,22 @@ export default function HealthProfileSetup() {
     if (!user) return;
     setSaving(true);
     try {
+      // 1. Ensure user is synced locally
+      try {
+        await fetch(`${API_URL}/api/auth/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: user.id,
+            email: user.email,
+            name: user.user_metadata?.full_name || user.user_metadata?.name,
+            role: user.user_metadata?.role || "PATIENT",
+          }),
+        });
+      } catch (syncErr) {
+        console.error("Sync error before profile save:", syncErr);
+      }
+
       const res = await fetch(`${API_URL}/api/v1/profile`, {
         method: "POST",
         headers: {
@@ -459,17 +524,17 @@ export default function HealthProfileSetup() {
         ) : (
           <>
             <div className="hp-header">
-              <div className="hp-eyebrow"><div className="hp-eyebrow-dot" /> Phase 1.3</div>
+              <div className="hp-eyebrow"><div className="hp-eyebrow-dot" /> Phase 2.4</div>
               <h1 className="hp-title">Build your <span>health profile</span></h1>
               <p className="hp-subtitle">Powers the AfriDx engine for personalized diagnostics.</p>
             </div>
             <div className="hp-completion-bar">
               <div className="hp-completion-pct">{pct}%</div>
-              <div className="hp-completion-text"><div className="hp-completion-title">Setup Progress</div><div className="hp-completion-sub">{6 - step} steps remaining</div></div>
+              <div className="hp-completion-text"><div className="hp-completion-title">Setup Progress</div><div className="hp-completion-sub">{8 - step} steps remaining</div></div>
             </div>
             <div className="hp-stepper">
               {STEPS.map(s => (
-                <button key={s.id} className={`hp-step ${s.id === step ? "selected" : ""}`} style={{ "--step-color": s.color } as React.CSSProperties} onClick={() => setStep(s.id)}>
+                <button key={s.id} className={`hp-step ${s.id === step ? "active" : ""}`} style={{ "--step-color": s.color } as React.CSSProperties} onClick={() => setStep(s.id)}>
                   <span className="hp-step-num">{s.id}</span><span className="hp-step-label">{s.short}</span>
                 </button>
               ))}
@@ -479,10 +544,12 @@ export default function HealthProfileSetup() {
             {step === 3 && <StepConditions data={data} set={set} />}
             {step === 4 && <StepMedications data={data} set={set} />}
             {step === 5 && <StepFamily data={data} set={set} />}
-            {step === 6 && <StepEmergency data={data} set={set} />}
+            {step === 6 && <StepVaccinations data={data} set={set} />}
+            {step === 7 && <StepHistory data={data} set={set} />}
+            {step === 8 && <StepEmergency data={data} set={set} />}
             <div className="hp-nav">
               <button disabled={step === 1} className="hp-btn hp-btn-ghost" onClick={() => setStep(step - 1)}>Back</button>
-              {step < 6 ? <button className="hp-btn hp-btn-primary" onClick={() => setStep(step + 1)}>Continue</button> : <button className="hp-btn hp-btn-primary" onClick={handleSave} disabled={saving}>{saving ? <div className="hp-spinner" /> : "Save Profile"}</button>}
+              {step < 8 ? <button className="hp-btn hp-btn-primary" onClick={() => setStep(step + 1)}>Continue</button> : <button className="hp-btn hp-btn-primary" onClick={handleSave} disabled={saving}>{saving ? <div className="hp-spinner" /> : "Save Profile"}</button>}
             </div>
           </>
         )}

@@ -21,7 +21,19 @@ services:
   #     POSTGRES_DB: medbridge
   #   volumes:
   #     - postgres_data:/var/lib/postgresql/data
+  # Typesense for high-performance search
+  typesense:
+    image: typesense/typesense:26.0
+    ports:
+      - "8108:8108"
+    volumes:
+      - typesense_data:/data
+    environment:
+      - TYPESENSE_DATA_DIR=/data
+      - TYPESENSE_API_KEY=medbridge_dev_typesense_key_change_in_prod
+      - TYPESENSE_ENABLE_CORS=true
+    restart: always
 
 volumes:
   redis_data:
-  # postgres_data:
+  typesense_data:

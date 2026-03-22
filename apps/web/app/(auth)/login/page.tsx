@@ -78,7 +78,7 @@ function LoginForm() {
     setLoading(true);
     
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -86,7 +86,22 @@ function LoginForm() {
     if (error) {
       setError(error.message);
       setLoading(false);
-    } else {
+    } else if (data.session?.user) {
+      // Sync user to database
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/auth/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: data.session.user.id,
+            email: data.session.user.email,
+            name: data.session.user.user_metadata?.full_name || data.session.user.user_metadata?.name,
+            role: data.session.user.user_metadata?.role || "PATIENT",
+          }),
+        });
+      } catch (syncErr) {
+        console.error("Sync error during login:", syncErr);
+      }
       // Redirect handled by middleware or automatic route change
       window.location.href = "/dashboard";
     }

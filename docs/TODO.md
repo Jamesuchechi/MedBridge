@@ -233,57 +233,57 @@
 
 ## Phase 2 — Drug Intelligence + Health Profiles (Week 9–14)
 
-### 2.1 Nigerian Drug Database — Expanded
-- [ ] Expand drug seed data to 5,000+ NAFDAC-registered drugs
-- [ ] Include: generic name, Nigerian brand names, manufacturer, form, strength
-- [ ] Include: common uses, contraindications, common interactions
-- [ ] Add: common price range (Lagos market price)
-- [ ] Set up Typesense for drug search indexing
-- [ ] Sync Postgres drug table to Typesense index
-- [ ] Build drug search API with Typesense (`GET /api/v1/drugs/search?q=`)
+### 2.1 Nigerian Drug Database — Expanded [x]
+- [x] Expand drug seed data to 5,000+ NAFDAC-registered drugs
+- [x] Include: generic name, Nigerian brand names, manufacturer, form, strength
+- [x] Include: common uses, contraindications, common interactions
+- [x] Add: common price range (Lagos market price)
+- [x] Set up Typesense for drug search indexing
+- [x] Sync Postgres drug table to Typesense index
+- [x] Build drug search API with Typesense (`GET /api/v1/drugs/search?q=`)
 
-### 2.2 Drug Intelligence — Frontend
-- [ ] Build drug search page (`/drugs`)
-  - [ ] Search input with real-time Typesense results
-  - [ ] Drug card component (name, category, form, strength)
-  - [ ] Drug detail page (`/drugs/[id]`)
-    - [ ] Full drug information display
-    - [ ] Common uses section
-    - [ ] Side effects section
-    - [ ] "Ask about this drug" AI chat button
-- [ ] Build drug interaction checker
-  - [ ] Multi-drug selector (add 2–8 drugs)
-  - [ ] Run interaction check button
-  - [ ] Results: interaction matrix, severity levels (minor / moderate / severe)
-  - [ ] Mandatory disclaimer
-- [ ] Build drug explanation UI (ask plain English question about drug)
-- [ ] Build "My Medications" section in health profile
+### 2.2 Drug Intelligence — Frontend [x]
+- [x] Build drug search page (`/drugs`)
+  - [x] Search input with real-time Typesense results
+  - [x] Drug card component (name, category, form, strength)
+  - [x] Drug detail page (`/drugs/[id]`)
+    - [x] Full drug information display
+    - [x] Common uses section
+    - [x] Side effects section
+    - [x] "Ask about this drug" AI chat button
+- [x] Build drug interaction checker
+  - [x] Multi-drug selector (add 2–8 drugs)
+  - [x] Run interaction check button
+  - [x] Results: interaction matrix, severity levels (minor / moderate / severe)
+  - [x] Mandatory disclaimer
+- [x] Build drug explanation UI (ask plain English question about drug)
+- [x] Build "My Medications" section in health profile
 
-### 2.3 Drug Intelligence — Backend + AI
-- [ ] `GET /api/v1/drugs/search` — Typesense search endpoint
-- [ ] `GET /api/v1/drugs/:id` — Drug detail from Postgres
-- [ ] `POST /api/v1/drugs/explain` — AI drug explanation
-- [ ] `POST /api/v1/drugs/interactions` — AI interaction check
-- [ ] Python AI: write `routers/drug.py`
-- [ ] Write drug explanation prompt template
-- [ ] Write drug interaction prompt template
-- [ ] Build interaction severity classification
-- [ ] Add local NAFDAC interaction database (known dangerous combos)
-- [ ] Save all drug queries to `drug_queries` table for profile memory
+### 2.3 Drug Intelligence — Backend + AI [x]
+- [x] `GET /api/v1/drugs/search` — Typesense search endpoint
+- [x] `GET /api/v1/drugs/:id` — Drug detail from Postgres
+- [x] `POST /api/v1/drugs/explain` — AI drug explanation
+- [x] `POST /api/v1/drugs/interactions` — AI interaction check
+- [x] Python AI: write `routers/drug.py`
+- [x] Write drug explanation prompt template
+- [x] Write drug interaction prompt template
+- [x] Build interaction severity classification
+- [x] Add local NAFDAC interaction database (known dangerous combos)
+- [x] Save all drug queries to `drug_queries` table for profile memory
 
-### 2.4 Health Profile — Enhanced
-- [ ] Add medication tracking (add/edit/remove current medications)
-- [ ] Add allergy management (add/remove allergies with reaction type)
-- [ ] Add medical history (past conditions, surgeries, hospitalizations)
-- [ ] Add family history section (diabetes, hypertension, sickle cell, cancer)
-- [ ] Add vaccination record section
-- [ ] Add emergency contacts
-- [ ] Implement profile completion percentage indicator
-- [ ] Embed health profile into all AI calls automatically
+### 2.4 Health Profile — Enhanced [x]
+- [x] Add medication tracking (add/edit/remove current medications)
+- [x] Add allergy management (add/remove allergies with reaction type)
+- [x] Add medical history (past conditions, surgeries, hospitalizations)
+- [x] Add family history section (diabetes, hypertension, sickle cell, cancer)
+- [x] Add vaccination record section
+- [x] Add emergency contacts
+- [x] Implement profile completion percentage indicator
+- [x] Embed health profile into all AI calls automatically
 
 ### 2.5 CommunityRx — Phase 1 (Pharmacy Locator)
 - [ ] Build pharmacy search by location (`/drugs/pharmacies`)
-- [ ] Integrate Google Maps Places API for pharmacy discovery
+- [ ] Integrate Google Maps Places API or other alternatives  for pharmacy discovery
 - [ ] Build "report drug availability" feature (crowdsourced)
 - [ ] Build drug pricing report form (user submits price at specific pharmacy)
 - [ ] Build price comparison display on drug detail page

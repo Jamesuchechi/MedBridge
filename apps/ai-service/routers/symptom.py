@@ -9,7 +9,7 @@ from mistralai.client import Mistral
 from jinja2 import Template
 from core.afridx import apply_afridx_weighting
 
-router = APIRouter(prefix="/internal/symptom", tags=["symptom"])
+router = APIRouter()
 from core.llm import get_llm_client
 
 # ─── Models ───────────────────────────────────────────────────────────────────
@@ -30,6 +30,12 @@ class SymptomAnalysisRequest(BaseModel):
     location: Optional[str] = "Nigeria"
     genotype: Optional[str] = None
     knownConditions: List[str] = []
+    allergies: List[Dict[str, Any]] = []
+    currentMedications: List[Dict[str, Any]] = []
+    familyHistory: List[str] = []
+    vaccinations: List[str] = []
+    medicalHistory: List[str] = []
+    bmi: Optional[float] = None
 
 class SymptomAnalysisResult(BaseModel):
     urgency: str # low, moderate, high, emergency

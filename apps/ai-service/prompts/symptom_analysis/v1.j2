@@ -8,8 +8,15 @@ Analysing symptoms for a patient with the following profile:
 - Location: {{ location }}
 - Genotype: {{ genotype or 'Unknown' }}
 - Known Conditions: {{ knownConditions | join(', ') or 'None' }}
+- Allergies: {{ allergies | map(attribute='allergy') | join(', ') or 'None' }}
+- Current Medications: {{ currentMedications | map(attribute='name') | join(', ') or 'None' }}
+- Family History: {{ familyHistory | join(', ') or 'None' }}
+- Vaccinations: {{ vaccinations | join(', ') or 'None' }}
+- Medical/Surgical History: {{ medicalHistory | join(', ') or 'None' }}
+- Body Mass Index (BMI): {{ bmi or 'Unknown' }}
 
-Your task is to provide a structured differential diagnosis.
+Your task is to provide a structured differential diagnosis. 
+IMPORTANT: Use the clinical history to rule out or highlight risks (e.g., surgical complications if recent surgeries, specific drug-drug interactions if on medications, or increased risk for conditions like Malaria if not vaccinated/on prophylaxis).
 You MUST respond in VALID JSON format with the following keys:
 {
   "urgency": "low" | "moderate" | "high" | "emergency",

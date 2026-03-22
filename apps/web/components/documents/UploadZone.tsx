@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { UploadFile, DocType, MedDocument } from "@/types/documents";
 import { api } from "@/lib/api";
 import { I } from "@/components/ui/icons";
+import { useAuthStore } from "@/store/auth.store";
 
 const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const ACCEPTED_EXT = [".pdf", ".jpg", ".jpeg", ".png", ".webp"];
@@ -18,6 +19,7 @@ const DOC_META: Record<DocType, { label: string; icon: string; color: string }> 
 };
 
 export function UploadZone({ onComplete }: { onComplete: (doc: MedDocument) => void }) {
+  const user = useAuthStore(s => s.user);
   const [dragging, setDragging] = useState(false);
   const [queue, setQueue] = useState<UploadFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -44,7 +46,7 @@ export function UploadZone({ onComplete }: { onComplete: (doc: MedDocument) => v
     setQueue((prev) => prev.map((f) => (f.id === id ? { ...f, docType: t } : f)));
 
   const handleAnalyze = async () => {
-    if (queue.length === 0) return;
+    if (queue.length === 0 || !user) return;
     setIsUploading(true);
 
     const pending = queue.filter(q => q.docType !== "unknown" && q.status !== "success");
@@ -56,7 +58,8 @@ export function UploadZone({ onComplete }: { onComplete: (doc: MedDocument) => v
         
         // 1. Get pre-signed URL from our API
         const { uploadUrl, fileUrl } = await api.get<{ uploadUrl: string; fileUrl: string; path: string }>(
-          `/api/v1/documents/upload-url?fileName=${encodeURIComponent(qf.file.name)}`
+          `/api/v1/documents/upload-url?fileName=${encodeURIComponent(qf.file.name)}`,
+          { headers: { "x-user-id": user.id } }
         );
 
         // 2. Upload file directly to Supabase Storage
@@ -74,7 +77,7 @@ export function UploadZone({ onComplete }: { onComplete: (doc: MedDocument) => v
           fileType: qf.file.type,
           docType: qf.docType,
           fileUrl: fileUrl,
-        });
+        }, { headers: { "x-user-id": user.id } });
 
         setQueue(prev => prev.map(f => f.id === qf.id ? { ...f, status: "success" } : f));
         lastDoc = doc;

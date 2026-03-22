@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
+exports.drugQueryLogs = exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 exports.roleEnum = (0, pg_core_1.pgEnum)("role", [
     "PATIENT",
@@ -43,6 +43,8 @@ exports.healthProfiles = (0, pg_core_1.pgTable)("health_profiles", {
     allergies: (0, pg_core_1.text)("allergies"), // JSON string array of objects
     medications: (0, pg_core_1.text)("medications"), // JSON string array of objects
     familyHistory: (0, pg_core_1.text)("family_history"), // JSON string array
+    vaccinations: (0, pg_core_1.text)("vaccinations"), // JSON string array
+    medicalHistory: (0, pg_core_1.text)("medical_history"), // JSON string array (surgeries, hospitalizations)
     emergencyName: (0, pg_core_1.text)("emergency_name"),
     emergencyPhone: (0, pg_core_1.text)("emergency_phone"),
     emergencyRelation: (0, pg_core_1.text)("emergency_relation"),
@@ -70,11 +72,22 @@ exports.drugs = (0, pg_core_1.pgTable)("drugs", {
     id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
     name: (0, pg_core_1.text)("name").notNull(),
     genericName: (0, pg_core_1.text)("generic_name").notNull(),
+    nafdacNumber: (0, pg_core_1.text)("nafdac_number").unique(),
     manufacturer: (0, pg_core_1.text)("manufacturer"),
     category: (0, pg_core_1.text)("category").notNull(),
     form: (0, pg_core_1.text)("form"), // tablet, syrup, etc.
     strength: (0, pg_core_1.text)("strength"),
-    priceRange: (0, pg_core_1.text)("price_range"),
+    brandNames: (0, pg_core_1.text)("brand_names"),
+    uses: (0, pg_core_1.text)("uses"),
+    contraindications: (0, pg_core_1.text)("contraindications"),
+    sideEffects: (0, pg_core_1.text)("side_effects"),
+    interactions: (0, pg_core_1.text)("interactions"),
+    priceRangeMin: (0, pg_core_1.integer)("price_range_min"),
+    priceRangeMax: (0, pg_core_1.integer)("price_range_max"),
+    requiresPrescription: (0, pg_core_1.boolean)("requires_prescription").default(false),
+    controlled: (0, pg_core_1.boolean)("controlled").default(false),
+    atcCode: (0, pg_core_1.text)("atc_code"),
+    icdIndications: (0, pg_core_1.text)("icd_indications"),
     createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
 });
 exports.symptomTaxonomy = (0, pg_core_1.pgTable)("symptom_taxonomy", {
@@ -82,5 +95,13 @@ exports.symptomTaxonomy = (0, pg_core_1.pgTable)("symptom_taxonomy", {
     name: (0, pg_core_1.text)("name").unique().notNull(),
     category: (0, pg_core_1.text)("category").notNull(),
     prevalence: (0, pg_core_1.integer)("prevalence"), // weight for AfriDx
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+});
+exports.drugQueryLogs = (0, pg_core_1.pgTable)("drug_query_logs", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    userId: (0, pg_core_1.uuid)("user_id").notNull().references(() => exports.users.id, { onDelete: "cascade" }),
+    drugId: (0, pg_core_1.uuid)("drug_id").references(() => exports.drugs.id, { onDelete: "set null" }),
+    query: (0, pg_core_1.text)("query").notNull(),
+    queryType: (0, pg_core_1.text)("query_type").notNull(), // search, detail, interaction, explanation
     createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
 });

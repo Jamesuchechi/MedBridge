@@ -3,27 +3,32 @@
 import { useState, useCallback, useEffect } from "react";
 import { UploadZone } from "@/components/documents/UploadZone";
 import { DocumentList } from "@/components/documents/DocumentList";
+import { useAuthStore } from "@/store/auth.store";
 import { ResultView } from "@/components/documents/ResultView";
 import { MedDocument } from "@/types/documents";
 import { api } from "@/lib/api";
 import { I } from "@/components/ui/icons"; // Assuming icons are here or I'll define them
 
 export default function DocumentsPage() {
+  const user = useAuthStore(s => s.user);
   const [view, setView] = useState<"list" | "upload" | "result">("list");
   const [docs, setDocs] = useState<MedDocument[]>([]);
   const [currentDoc, setCurrentDoc] = useState<MedDocument | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDocs = useCallback(async () => {
+    if (!user) return;
     try {
-      const data = await api.get<MedDocument[]>("/api/v1/documents");
+      const data = await api.get<MedDocument[]>("/api/v1/documents", {
+        headers: { "x-user-id": user.id }
+      });
       setDocs(data);
     } catch (err) {
       console.error("Failed to fetch documents", err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchDocs();

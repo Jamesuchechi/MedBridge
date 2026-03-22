@@ -4,7 +4,8 @@ import {
   useState, useEffect, useRef, useCallback,
   type KeyboardEvent, type CSSProperties,
 } from "react";
-import { useAuthStore } from "@/store/auth.store";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 import { api, ApiError } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -429,6 +430,7 @@ const CSS = `
   background: rgba(0,229,160,.06); border: 1px solid rgba(0,229,160,.18);
   margin-top: 12px;
 }
+.sc-clinic-cta svg { width: 20px; height: 20px; flex-shrink: 0; }
 
 .sc-emergency {
   position: fixed; inset: 0; z-index: 9999;
@@ -456,6 +458,7 @@ const CSS = `
   cursor: pointer; transition: transform .2s;
 }
 .sc-history-item:hover { transform: translateX(3px); border-color: var(--border-h); }
+.sc-history-item svg { width: 18px; height: 18px; color: var(--text3); flex-shrink: 0; }
 .sc-urgency-dot { width: 10px; height: 10px; border-radius: 50%; }
 
 .sc-metadata-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
@@ -465,6 +468,7 @@ const CSS = `
   background: var(--glass); border: 1px solid var(--border);
   font-size: 12px; color: var(--text2);
 }
+.sc-meta-chip svg { width: 14px; height: 14px; flex-shrink: 0; }
 .sc-history-banner {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 14px; border-radius: 12px;
@@ -592,7 +596,17 @@ function LoadingState() {
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 export default function SymptomCheckerPage() {
-  const { user } = useAuthStore();
+  const [user, setUser] = useState<User | null>(null);
+  
+  useEffect(() => {
+    const fetchUser = async () => {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    };
+    fetchUser();
+  }, []);
+
   const [view, setView] = useState<View>("input");
   const [tab, setTab] = useState<"check" | "history">("check");
   const [showEmergency, setShowEmergency] = useState(false);

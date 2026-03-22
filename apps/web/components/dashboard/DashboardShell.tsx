@@ -9,6 +9,7 @@ import { useTheme } from "next-themes";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { DashboardHome } from "./DashboardHome";
+import { useAuthStore } from "@/store/auth.store";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type UserRole = "patient" | "doctor" | "clinic";
@@ -78,18 +79,6 @@ const Ic = {
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
     </svg>
   ),
-  Stethoscope: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6 6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/>
-      <path d="M8 15v1a6 6 0 0 0 6 6 6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/>
-    </svg>
-  ),
-  Hospital: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 6v4M14 14h-4M14 18h-4M14 8h-4"/>
-      <path d="M18 12h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h2M18 22V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v18"/>
-    </svg>
-  ),
   Map: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
@@ -150,32 +139,6 @@ const Ic = {
       <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
     </svg>
   ),
-  Shield: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    </svg>
-  ),
-  Users: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-  ),
-  BarChart: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-    </svg>
-  ),
-  Zap: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-    </svg>
-  ),
-  ArrowRight: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-    </svg>
-  ),
 };
 
 // ─── Nav Config ───────────────────────────────────────────────────────────────
@@ -199,7 +162,7 @@ const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> 
   clinic:  { label: "Clinic Admin",color: "var(--accent3)", bg: "rgba(199,125,255,0.12)" },
 };
 
-// ─── CSS (Integrated with Marketing Themes) ──────────────────────────────────
+// ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -225,8 +188,6 @@ const CSS = `
   --warn:      #ffb800;
   --nav-active-bg:   rgba(0,229,160,0.12);
   --nav-active-text: #00e5a0;
-  --nav-active-bar:  #00e5a0;
-  --scrollbar: rgba(255,255,255,0.08);
   --card-bg:   rgba(255,255,255,0.04);
   --card-border: rgba(255,255,255,0.08);
   --topbar-bg: rgba(3,5,10,0.85);
@@ -251,8 +212,6 @@ const CSS = `
   --warn:      #b57500;
   --nav-active-bg:   rgba(0,168,112,0.12);
   --nav-active-text: #008f5d;
-  --nav-active-bar:  #00a870;
-  --scrollbar: rgba(0,0,0,0.1);
   --card-bg:   rgba(255,255,255,0.8);
   --card-border: rgba(0,0,0,0.08);
   --topbar-bg: rgba(240,244,248,0.9);
@@ -294,9 +253,9 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   transition: width .3s cubic-bezier(.4,0,.2,1);
 }
 @media (max-width: 1024px) {
-  .sidebar { 
-    position: fixed; top: 0; left: 0; bottom: 0; 
-    width: var(--sidebar-w) !important; transform: translateX(-100%); 
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: var(--sidebar-w) !important; transform: translateX(-100%);
     z-index: 200; box-shadow: 4px 0 40px rgba(0,0,0,0.4);
     visibility: hidden; pointer-events: none;
   }
@@ -304,15 +263,15 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 
 .sidebar-backdrop {
-  display: none; position: fixed; inset: 0; 
-  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); 
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
   z-index: 199; opacity: 0; pointer-events: none; transition: opacity .3s ease;
 }
 @media (max-width: 1024px) { .sidebar-backdrop.visible { opacity: 1; pointer-events: auto; display: block; } }
 
 .sidebar-header { height: var(--topbar-h); padding: 0 16px; display: flex; align-items: center; border-bottom: 1px solid var(--border); }
 .sidebar-logo { display: flex; align-items: center; gap: 10px; }
-.sidebar-logo-mark { 
+.sidebar-logo-mark {
   width: 34px; height: 34px; border-radius: 9px;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   display: flex; align-items: center; justify-content: center;
@@ -323,63 +282,86 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .shell.collapsed .sidebar-logo-name { display: none; }
 
 .sidebar-user { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
-.sidebar-user-avatar { 
+.sidebar-user-avatar {
   width: 36px; height: 36px; border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   display: flex; align-items: center; justify-content: center;
   font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: #000;
+  flex-shrink: 0;
 }
 .sidebar-user-name { font-size: 13px; font-weight: 700; }
 .sidebar-user-role { font-size: 10px; padding: 2px 7px; border-radius: 100px; font-family: 'DM Mono', monospace; font-weight: 600; text-transform: uppercase; }
+.shell.collapsed .sidebar-user-info { display: none; }
 
 .sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
-.nav-item { 
+.nav-item {
   display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 40px; margin: 1px 8px;
   border-radius: 10px; color: var(--text2); font-size: 13.5px; transition: all .2s;
 }
 .nav-item:hover { background: var(--glass-h); color: var(--text); }
 .nav-item.active { background: var(--nav-active-bg); color: var(--nav-active-text); font-weight: 600; }
+.nav-item-icon { flex-shrink: 0; }
 .nav-item-icon svg { width: 18px; height: 18px; }
+.nav-item-label { flex: 1; white-space: nowrap; overflow: hidden; }
+.shell.collapsed .nav-item-label,
+.shell.collapsed .nav-badge { display: none; }
+.nav-badge {
+  font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 700;
+  padding: 2px 6px; border-radius: 100px;
+  background: rgba(0,229,160,0.15); color: var(--accent);
+}
+.nav-divider { height: 1px; background: var(--border); margin: 6px 16px; }
 
 .sidebar-footer { padding: 10px 8px; border-top: 1px solid var(--border); }
-.sidebar-logout { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 38px; border-radius: 10px; color: var(--text3); font-size: 13px; transition: all .2s; width: 100%; border: none; background: transparent; }
+.sidebar-logout {
+  display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 38px;
+  border-radius: 10px; color: var(--text3); font-size: 13px; transition: all .2s; width: 100%;
+}
 .sidebar-logout:hover { color: var(--danger); background: rgba(255, 92, 92, 0.08); }
 .sidebar-logout svg { width: 18px; height: 18px; flex-shrink: 0; }
+.shell.collapsed .sidebar-logout-label { display: none; }
 
-.topbar { 
-  grid-area: topbar; height: var(--topbar-h); background: var(--topbar-bg); 
+.topbar {
+  grid-area: topbar; height: var(--topbar-h); background: var(--topbar-bg);
   backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 12px; padding: 0 20px; z-index: 40;
 }
-.sidebar-collapse-btn { 
-  width: 32px; height: 32px; border-radius: 9px; background: var(--glass); 
+.sidebar-collapse-btn {
+  width: 32px; height: 32px; border-radius: 9px; background: var(--glass);
   border: 1px solid var(--border); color: var(--text2); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
 }
 @media (max-width: 1024px) { .sidebar-collapse-btn { display: none; } }
 
-.topbar-hamburger { 
-  width: 38px; height: 38px; border-radius: 11px; background: var(--glass); 
+.topbar-hamburger {
+  width: 38px; height: 38px; border-radius: 11px; background: var(--glass);
   border: 1px solid var(--border); color: var(--text2); display: none; align-items: center; justify-content: center;
+  flex-shrink: 0;
 }
 @media (max-width: 1024px) { .topbar-hamburger { display: flex; } }
 
 .topbar-search { position: relative; flex: 1; max-width: 360px; }
 @media (max-width: 600px) { .topbar-search { display: none; } }
-.topbar-search-input { width: 100%; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px 8px 36px; color: var(--text); outline: none; font-size: 14px; }
-.topbar-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); }
+.topbar-search-input {
+  width: 100%; background: var(--glass); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px 12px 8px 36px; color: var(--text); outline: none; font-size: 14px;
+}
+.topbar-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); display: flex; }
 .topbar-search-icon svg { width: 14px; height: 14px; }
 
 .topbar-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-.topbar-icon-btn { width: 38px; height: 38px; border-radius: 11px; background: var(--glass); border: 1px solid var(--border); color: var(--text2); display: flex; align-items: center; justify-content: center; }
+.topbar-icon-btn {
+  width: 38px; height: 38px; border-radius: 11px; background: var(--glass);
+  border: 1px solid var(--border); color: var(--text2); display: flex; align-items: center; justify-content: center;
+}
 .topbar-icon-btn svg { width: 18px; height: 18px; }
 
 .main-content { grid-area: main; overflow-y: auto; background: var(--bg); padding-bottom: 60px; }
 .main-content-inner { padding: 40px; width: 100%; margin: 0; }
 @media (max-width: 768px) { .main-content-inner { padding: 20px; } }
-@media (max-width: 600px) { .main-content-inner { padding: 20px; } }
 
-.mobile-bottom-nav { 
-  display: none; position: fixed; bottom: 0; left: 0; right: 0; 
+.mobile-bottom-nav {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
   background: var(--sidebar-bg); border-top: 1px solid var(--border);
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   padding: 8px 8px 24px; z-index: 100; justify-content: space-around;
@@ -397,18 +379,18 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .health-ring-score { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; }
 
 .user-dropdown-wrapper { position: relative; }
-.user-dropdown { 
-  position: absolute; top: calc(100% + 8px); right: 0; 
-  width: 220px; background: var(--sidebar-bg); border: 1px solid var(--border); 
-  border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+.user-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  width: 220px; background: var(--sidebar-bg); border: 1px solid var(--border);
+  border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   padding: 8px; z-index: 1000; animation: dropdown-in .2s ease-out;
 }
 @keyframes dropdown-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .dropdown-header { padding: 10px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
 .dropdown-name { font-size: 13px; font-weight: 700; color: var(--text); }
 .dropdown-email { font-size: 11px; color: var(--text3); }
-.dropdown-item { 
-  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; 
+.dropdown-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px;
   border-radius: 8px; font-size: 13px; color: var(--text2); transition: all .2s;
 }
 .dropdown-item:hover { background: var(--glass-h); color: var(--text); }
@@ -430,6 +412,8 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
   const [user, setUser] = useState<User>(DEFAULT_USER);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const isFetchingUser = useRef(false);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -443,41 +427,58 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
   useEffect(() => {
     setMounted(true);
     const fetchUser = async () => {
-      const supabase = createClient();
-      const { data: { user: sbUser } } = await supabase.auth.getUser();
-      if (sbUser) {
-        const name = sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User";
-        
-        let profileComplete = 0;
-        try {
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-          const res = await fetch(`${API_URL}/api/v1/profile`, {
-            headers: { "x-user-id": sbUser.id }
-          });
-          if (res.ok) {
-            const profile = await res.json();
-            // Calculate completion (simplified version of the one in profile/page.tsx)
-            const fields = [profile.dob, profile.gender, profile.phone, profile.state, profile.bloodGroup, profile.genotype, profile.weight, profile.height];
-            const filled = fields.filter(Boolean).length;
-            profileComplete = Math.min(100, Math.round((filled / fields.length) * 100));
-          }
-        } catch (err) {
-          console.error("Failed to fetch profile for completion:", err);
-        }
+      if (isFetchingUser.current) return;
+      isFetchingUser.current = true;
 
-        setUser({
-          name,
-          email: sbUser.email || "",
-          role: (sbUser.user_metadata?.role as UserRole) || "patient",
-          initials: name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2),
-          profileComplete,
-        });
+      try {
+        const supabase = createClient();
+        const { data: { user: sbUser } } = await supabase.auth.getUser();
+
+        if (sbUser) {
+          const name = sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User";
+
+          let profileComplete = 0;
+          try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+            const res = await fetch(`${API_URL}/api/v1/profile`, {
+              headers: { "x-user-id": sbUser.id }
+            });
+            if (res.ok) {
+              const profile = await res.json();
+              const fields = [profile.dob, profile.gender, profile.phone, profile.state, profile.bloodGroup, profile.genotype, profile.weight, profile.height];
+              const filled = fields.filter(Boolean).length;
+              profileComplete = Math.min(100, Math.round((filled / fields.length) * 100));
+            }
+          } catch (err) {
+            console.error("Failed to fetch profile for completion:", err);
+          }
+
+          const finalRole = (sbUser.user_metadata?.role as UserRole) || "patient";
+          setUser({
+            name,
+            email: sbUser.email || "",
+            role: finalRole,
+            initials: name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2),
+            profileComplete,
+          });
+          useAuthStore.getState().setUser({
+            id: sbUser.id,
+            email: sbUser.email || "",
+            name: name,
+            role: finalRole.toUpperCase() as "PATIENT" | "CLINICIAN" | "CLINIC_STAFF" | "CLINIC_ADMIN" | "SUPER_ADMIN",
+            isVerified: true,
+            createdAt: sbUser.created_at || new Date().toISOString()
+          });
+        }
+      } finally {
+        isFetchingUser.current = false;
       }
     };
     fetchUser();
   }, []);
 
   const activeNav = ALL_NAV.find(n => pathname === n.href || pathname.startsWith(n.href + "/"))?.id ?? "home";
+
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -492,7 +493,7 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
 
       <div className={`shell ${collapsed ? "collapsed" : ""}`}>
         <div className={`sidebar-backdrop ${mobileOpen ? "visible" : ""}`} onClick={() => setMobileOpen(false)} />
-        
+
         <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
           <div className="sidebar-header">
             <div className="sidebar-logo">
@@ -505,7 +506,10 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
             <div className="sidebar-user-avatar">{user.initials}</div>
             <div className="sidebar-user-info">
               <div className="sidebar-user-name">{user.name}</div>
-              <div className="sidebar-user-role" style={{ background: ROLE_META[user.role].bg, color: ROLE_META[user.role].color }}>
+              <div
+                className="sidebar-user-role"
+                style={{ background: ROLE_META[user.role].bg, color: ROLE_META[user.role].color }}
+              >
                 {ROLE_META[user.role].label}
               </div>
             </div>
@@ -515,7 +519,11 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
             {navForRole(user.role).map(item => (
               <div key={item.id}>
                 {item.dividerBefore && <div className="nav-divider" />}
-                <a href={item.href} className={`nav-item ${activeNav === item.id ? "active" : ""}`} onClick={() => setMobileOpen(false)}>
+                <a
+                  href={item.href}
+                  className={`nav-item ${activeNav === item.id ? "active" : ""}`}
+                  onClick={() => setMobileOpen(false)}
+                >
                   <span className="nav-item-icon"><item.icon /></span>
                   <span className="nav-item-label">{item.label}</span>
                   {item.badge && <span className="nav-badge">{item.badge}</span>}
@@ -548,12 +556,11 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
               {theme === 'dark' ? <Ic.Sun /> : <Ic.Moon />}
             </button>
             <button className="topbar-icon-btn"><Ic.Bell /></button>
-            
+
             <div className="user-dropdown-wrapper" ref={dropdownRef}>
-              <button 
+              <button
                 onClick={() => setShowDropdown(!showDropdown)}
                 style={{ borderRadius: '50%', border: '2px solid var(--border)', padding: '2px', transition: 'all .2s' }}
-                className={showDropdown ? 'active-trigger' : ''}
               >
                 <div className="sidebar-user-avatar" style={{ width: '32px', height: '32px', fontSize: '11px' }}>{user.initials}</div>
               </button>
@@ -582,7 +589,7 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
 
         <main className="main-content">
           <div className="main-content-inner">
-            {children ? children : <DashboardHome user={user} />}
+          {pathname === "/dashboard" ? <DashboardHome user={user} /> : children}
           </div>
         </main>
       </div>

@@ -25,15 +25,18 @@ export function ResultView({ doc, onBack }: { doc: MedDocument; onBack: () => vo
   const user = useAuthStore((state) => state.user);
 
   const pollStatus = useCallback(async () => {
+    if (!user) return;
     try {
-      const updatedDoc = await api.get<MedDocument>(`/api/v1/documents/${doc.id}`);
+      const updatedDoc = await api.get<MedDocument>(`/api/v1/documents/${doc.id}`, {
+        headers: { "x-user-id": user.id }
+      });
       if (updatedDoc.status !== currentDoc.status) {
         setCurrentDoc(updatedDoc);
       }
     } catch (err) {
       console.error("Polling failed", err);
     }
-  }, [doc.id, currentDoc.status]);
+  }, [doc.id, currentDoc.status, user]);
 
   useEffect(() => {
     if (currentDoc.status === "pending" || currentDoc.status === "processing") {

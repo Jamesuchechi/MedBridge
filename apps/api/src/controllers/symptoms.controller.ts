@@ -67,6 +67,12 @@ export const analyzeSymptoms = async (req: Request, res: Response) => {
       location: location || profile?.state || "Nigeria",
       genotype: profile?.genotype || null,
       knownConditions: profile?.chronicConditions ? JSON.parse(profile.chronicConditions) : [],
+      allergies: profile?.allergies ? JSON.parse(profile.allergies) : [],
+      currentMedications: profile?.medications ? JSON.parse(profile.medications) : [],
+      familyHistory: profile?.familyHistory ? JSON.parse(profile.familyHistory) : [],
+      vaccinations: profile?.vaccinations ? JSON.parse(profile.vaccinations) : [],
+      medicalHistory: profile?.medicalHistory ? JSON.parse(profile.medicalHistory) : [],
+      bmi: (profile?.weight && profile?.height) ? (parseFloat(profile.weight) / ((parseFloat(profile.height)/100)**2)).toFixed(1) : null,
     });
 
     const analysisResult = aiResponse.data;

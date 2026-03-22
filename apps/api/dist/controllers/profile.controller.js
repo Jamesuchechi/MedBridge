@@ -59,6 +59,8 @@ const upsertProfile = async (req, res) => {
             allergies: JSON.stringify(data.allergies || []),
             medications: JSON.stringify(data.medications || []),
             familyHistory: JSON.stringify(data.familyHistory || []),
+            vaccinations: JSON.stringify(data.vaccinations || []),
+            medicalHistory: JSON.stringify(data.medicalHistory || []),
             emergencyName: data.emergencyName || null,
             emergencyPhone: data.emergencyPhone || null,
             emergencyRelation: data.emergencyRelation || null,
