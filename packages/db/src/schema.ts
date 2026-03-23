@@ -14,6 +14,7 @@ export const users = pgTable("users", {
   name: text("name"),
   role: roleEnum("role").default("PATIENT").notNull(),
   isVerified: boolean("is_verified").default(false).notNull(),
+  mdcnVerified: boolean("mdcn_verified").default(false),
   clinicId: uuid("clinic_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -172,6 +173,46 @@ export const moderationAuditLog = pgTable("moderation_audit_log", {
   reportId: uuid("report_id").notNull().references(() => drugPriceReports.id, { onDelete: "cascade" }),
   adminId: text("admin_id").notNull(),
   action: text("action").notNull(),
+  previousStatus: text("previous_status"),
+  newStatus: text("new_status"),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Doctor Onboarding ───────────────────────────────────────────────────────
+export const doctorProfiles = pgTable("doctor_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  fullName: text("full_name").notNull(),
+  gender: text("gender"),
+  phone: text("phone"),
+  mdcnNumber: text("mdcn_number").unique().notNull(),
+  mdcnYear: integer("mdcn_year"),
+  specialization: text("specialization").notNull(),
+  subSpecialization: text("sub_specialization"),
+  yearsExperience: integer("years_experience"),
+  currentHospital: text("current_hospital"),
+  hospitalState: text("hospital_state"),
+  hospitalLga: text("hospital_lga"),
+  isIndependent: boolean("is_independent").default(false).notNull(),
+  bio: text("bio"),
+  languages: text("languages").default('["English"]'), // JSON string array
+  consultationTypes: text("consultation_types").default('["In-person"]'), // JSON string array
+  verificationStatus: text("verification_status").default("pending").notNull(), // pending, under_review, approved, rejected, suspended
+  isCopilotEnabled: boolean("is_copilot_enabled").default(false).notNull(),
+  rejectionReason: text("rejection_reason"),
+  verifiedBy: uuid("verified_by").references(() => users.id),
+  verifiedAt: timestamp("verified_at"),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const doctorVerificationAudit = pgTable("doctor_verification_audit", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  doctorId: uuid("doctor_id").notNull().references(() => doctorProfiles.id, { onDelete: "cascade" }),
+  adminId: uuid("admin_id").notNull().references(() => users.id),
+  action: text("action").notNull(), // approve, reject, suspend, reinstate, under_review, note, submit
   previousStatus: text("previous_status"),
   newStatus: text("new_status"),
   note: text("note"),

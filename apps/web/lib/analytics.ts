@@ -74,7 +74,7 @@ export const track = {
     state?: string;
     usedGeolocation: boolean;
     resultCount: number;
-    source: "overpass" | "nominatim" | "database" | "google_places";
+    source: "overpass" | "nominatim" | "database" | "google" | "google_places";
   }) => emit("pharmacy_searched", p),
 
   pharmacyDetailViewed: (p: { pharmacyId: string; pharmacyName: string }) =>

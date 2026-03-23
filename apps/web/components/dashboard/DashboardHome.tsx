@@ -56,17 +56,27 @@ function HealthRing({ score }: { score: number }) {
   );
 }
 
-const STATS = [
+const PATIENT_STATS = [
   { label: "Symptom Checks", value: "12", icon: Ic.Activity },
   { label: "Medications",    value: "3",  icon: Ic.Pill },
   { label: "Lab Reports",    value: "5",  icon: Ic.FileText },
   { label: "Health Score",   value: "74", icon: Ic.Shield },
 ];
 
+const DOCTOR_STATS = [
+  { label: "Patient Consults", value: "28", icon: Ic.Activity },
+  { label: "Pending Reviews",  value: "4",  icon: Ic.FileText },
+  { label: "Active Cases",     value: "12", icon: Ic.Shield },
+  { label: "Referrals Sent",   value: "7",  icon: Ic.Activity },
+];
+
 export function DashboardHome({ user }: { user: User }) {
   const h = new Date().getHours();
   const part = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   const first = user.name.split(" ")[0];
+  const isDoctor = user.role === "doctor" || user.role === "CLINICIAN";
+
+  const stats = isDoctor ? DOCTOR_STATS : PATIENT_STATS;
 
   return (
     <div>
@@ -80,14 +90,14 @@ export function DashboardHome({ user }: { user: User }) {
             fontFamily: 'Syne, sans-serif', fontSize: '28px', fontWeight: 800, marginBottom: '8px'
           }}>
             {part},{" "}
-            <span style={{ color: 'var(--accent, #00e5a0)' }}>{first}</span>
+            <span style={{ color: isDoctor ? 'var(--accent2, #3d9bff)' : 'var(--accent, #00e5a0)' }}>{first}</span>
           </h2>
           <p style={{ color: 'var(--text2, rgba(240,244,255,0.55))' }}>
-            Welcome to your health dashboard.
+            {isDoctor ? "Welcome to your clinical workspace." : "Welcome to your health dashboard."}
           </p>
         </div>
 
-        {user.profileComplete < 100 && (
+        {!isDoctor && user.profileComplete < 100 && (
           <div style={{
             background: 'linear-gradient(135deg, rgba(0,229,160,0.08), rgba(61,155,255,0.08))',
             border: '1px solid var(--accent, #00e5a0)',
@@ -115,6 +125,35 @@ export function DashboardHome({ user }: { user: User }) {
             </a>
           </div>
         )}
+
+        {isDoctor && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(61,155,255,0.08), rgba(199,125,255,0.08))',
+            border: '1px solid var(--accent2, #3d9bff)',
+            borderRadius: '16px', padding: '16px 20px',
+            display: 'flex', alignItems: 'center', gap: '16px', maxWidth: '400px'
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>
+                Doctor Copilot is Active
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text2, rgba(240,244,255,0.55))' }}>
+                Ready to assist with differentials and clinical notes.
+              </div>
+            </div>
+            <a
+              href="/dashboard/copilot"
+              style={{
+                background: 'var(--accent2, #3d9bff)', color: '#fff',
+                padding: '8px 16px', borderRadius: '10px',
+                fontSize: '13px', fontWeight: 700, textDecoration: 'none',
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              Start Analysis
+            </a>
+          </div>
+        )}
       </div>
 
       {/* ── Stat cards ───────────────────────────────────────────── */}
@@ -124,7 +163,7 @@ export function DashboardHome({ user }: { user: User }) {
         gap: '16px',
         marginBottom: '24px',
       }}>
-        {STATS.map(stat => (
+        {stats.map(stat => (
           <div
             key={stat.label}
             style={{
@@ -137,16 +176,15 @@ export function DashboardHome({ user }: { user: User }) {
               gap: '12px',
             }}
           >
-            {/* Icon — fixed 32×32, no stretching */}
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              color: 'var(--accent, #00e5a0)',
+              color: isDoctor ? 'var(--accent2, #3d9bff)' : 'var(--accent, #00e5a0)',
             }}>
               <div style={{ width: 32, height: 32, flexShrink: 0 }}>
                 <stat.icon />
               </div>
-              <span style={{ fontSize: '11px', color: 'var(--accent, #00e5a0)', opacity: 0.7 }}>
-                +2.4%
+              <span style={{ fontSize: '11px', color: isDoctor ? 'var(--accent2, #3d9bff)' : 'var(--accent, #00e5a0)', opacity: 0.7 }}>
+                {isDoctor ? "Today" : "+2.4%"}
               </span>
             </div>
 
@@ -170,41 +208,61 @@ export function DashboardHome({ user }: { user: User }) {
         gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
         gap: '20px',
       }}>
-        {/* Health Profile ring */}
+        {/* Left Card */}
         <div style={{
           background: 'var(--card-bg, rgba(255,255,255,0.04))',
           border: '1px solid var(--card-border, rgba(255,255,255,0.08))',
           borderRadius: '18px', padding: '20px',
         }}>
           <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: '18px', fontWeight: 700, marginBottom: '20px' }}>
-            Health Profile Status
+            {isDoctor ? "Recent Patient Activity" : "Health Profile Status"}
           </h3>
-          <HealthRing score={user.profileComplete} />
-          <div style={{
-            textAlign: 'center', marginTop: '16px',
-            color: 'var(--text2, rgba(240,244,255,0.55))', fontSize: '14px',
-          }}>
-            {user.profileComplete === 100 ? "Profile Complete ✓" : "Profile Incomplete"}
-          </div>
+          {isDoctor ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {[
+                { name: "Amaka Okafor", time: "14:20", type: "Malaria Screening" },
+                { name: "John Doe", time: "11:05", type: "Hypertension Review" },
+                { name: "Bisi Akande", time: "09:30", type: "General Consultation" },
+              ].map((p, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600 }}>{p.name}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text3)' }}>{p.type} · {p.time}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <HealthRing score={user.profileComplete} />
+              <div style={{
+                textAlign: 'center', marginTop: '16px',
+                color: 'var(--text2, rgba(240,244,255,0.55))', fontSize: '14px',
+              }}>
+                {user.profileComplete === 100 ? "Profile Complete ✓" : "Profile Incomplete"}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* AI Insights */}
+        {/* Right Card */}
         <div style={{
           background: 'var(--card-bg, rgba(255,255,255,0.04))',
           border: '1px solid var(--card-border, rgba(255,255,255,0.08))',
           borderRadius: '18px', padding: '20px',
         }}>
           <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: '18px', fontWeight: 700, marginBottom: '20px' }}>
-            Recent AI Insights
+            {isDoctor ? "Clinical Alerts" : "Recent AI Insights"}
           </h3>
           <div style={{
             padding: '16px', borderRadius: '12px',
-            background: 'rgba(0,229,160,0.05)', border: '1px solid rgba(0,229,160,0.1)',
+            background: isDoctor ? 'rgba(61,155,255,0.05)' : 'rgba(0,229,160,0.05)',
+            border: isDoctor ? '1px solid rgba(61,155,255,0.1)' : '1px solid rgba(0,229,160,0.1)',
           }}>
             <p style={{ fontSize: '13px', color: 'var(--text2, rgba(240,244,255,0.55))', lineHeight: 1.6 }}>
-              {user.profileComplete < 60
-                ? "Complete your profile to receive personalized health insights based on your genotype and history."
-                : "Rainy season in your region — malaria risk is elevated. Consider prophylaxis if travelling to rural areas."}
+              {isDoctor 
+                ? "Lassa Fever outbreak reported in Ondo state. Ensure standard precautions and high index of suspicion."
+                : user.profileComplete < 60
+                  ? "Complete your profile to receive personalized health insights based on your genotype and history."
+                  : "Rainy season in your region — malaria risk is elevated. Consider prophylaxis if travelling to rural areas."}
             </p>
           </div>
         </div>

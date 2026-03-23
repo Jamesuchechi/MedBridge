@@ -10,6 +10,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { DashboardHome } from "./DashboardHome";
 import { useAuthStore } from "@/store/auth.store";
+import DashboardFooter from "@/components/layout/DashboardFooter";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type UserRole = "patient" | "doctor" | "clinic";
@@ -139,16 +140,41 @@ const Ic = {
       <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
     </svg>
   ),
+  Users: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  Clipboard: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+    </svg>
+  ),
+  ShieldCheck: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 11 11 13 15 9"/>
+    </svg>
+  ),
 };
 
 // ─── Nav Config ───────────────────────────────────────────────────────────────
 const ALL_NAV: NavItem[] = [
   { id: "home",      label: "Home",            href: "/dashboard",           icon: Ic.Home },
-  { id: "symptoms",  label: "Symptom Checker", href: "/dashboard/symptoms",  icon: Ic.Activity, badge: "AI" },
+  
+  // Doctor/Clinician specific
+  { id: "copilot",   label: "Doctor Copilot",  href: "/dashboard/copilot",   icon: Ic.Activity, roleGate: ["doctor"], badge: "PRO" },
+  { id: "patients",  label: "My Patients",     href: "/dashboard/patients",  icon: Ic.Users, roleGate: ["doctor"] },
+  { id: "referrals", label: "Referrals",       href: "/dashboard/referrals", icon: Ic.Clipboard, roleGate: ["doctor"] },
+
+  // Admin specific
+  { id: "admin-queue", label: "Verification Queue", href: "/dashboard/admin/doctors/queue", icon: Ic.ShieldCheck, roleGate: ["clinic"] }, // 'clinic' role used for admin for now based on DashboardHome mapping or we can add "SUPER_ADMIN"
+
+  // Patient / Generic
+  { id: "symptoms",  label: "Symptom Checker", href: "/dashboard/symptoms",  icon: Ic.Activity, badge: "AI", roleGate: ["patient"] },
   { id: "documents", label: "Documents",        href: "/dashboard/documents", icon: Ic.FileText },
   { id: "drugs",     label: "Drug Intelligence",href: "/dashboard/drugs",     icon: Ic.Pill },
   { id: "community", label: "CommunityRx",      href: "/dashboard/community", icon: Ic.Map },
-  { id: "profile",   label: "Health Profile",   href: "/dashboard/profile",   icon: Ic.User, dividerBefore: true },
+  { id: "profile",   label: "Health Profile",   href: "/dashboard/profile",   icon: Ic.User, dividerBefore: true, roleGate: ["patient"] },
   { id: "settings",  label: "Settings",          href: "/dashboard/settings",  icon: Ic.Settings, dividerBefore: true },
 ];
 
@@ -356,8 +382,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .topbar-icon-btn svg { width: 18px; height: 18px; }
 
-.main-content { grid-area: main; overflow-y: auto; background: var(--bg); padding-bottom: 60px; }
-.main-content-inner { padding: 40px; width: 100%; margin: 0; }
+.main-content { grid-area: main; overflow-y: auto; background: var(--bg); padding-bottom: 60px; display: flex; flex-direction: column; }
+.main-content-inner { padding: 40px; width: 100%; margin: 0; flex: 1; }
 @media (max-width: 768px) { .main-content-inner { padding: 20px; } }
 
 .mobile-bottom-nav {
@@ -594,6 +620,7 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
           <div className="main-content-inner">
           {pathname === "/dashboard" ? <DashboardHome user={user} /> : children}
           </div>
+          <DashboardFooter />
         </main>
       </div>
 

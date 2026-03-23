@@ -47,6 +47,12 @@ interface PriceReport {
 
 type ReportModalType = "availability" | "price";
 
+interface PharmacySearchResponse {
+  pharmacies: Pharmacy[];
+  total: number;
+  source: "overpass" | "nominatim" | "database" | "google" | "google_places";
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const NIGERIAN_STATES = [
   "Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno",
@@ -367,7 +373,6 @@ function PharmacyDetailView({
   useEffect(() => {
     track.pharmacyDetailViewed({ pharmacyId: pharmacyKey, pharmacyName: pharmacy.name });
 
-    const isUUID = /^[0-9a-f-]{36}$/.test(pharmacyKey);
     api.get<PharmacyDetail>(`/api/v1/pharmacies/${pharmacyKey}`)
       .then(setDetail)
       .catch(() => setDetail({ ...pharmacy, availability: [], prices: [] }))
@@ -541,7 +546,7 @@ export default function CommunityPage() {
       if (lng != null) params.set("lng", String(lng));
       params.set("radius", "10000");
 
-      const data = await api.get<{ pharmacies: Pharmacy[]; total: number; source: string }>(
+      const data = await api.get<PharmacySearchResponse>(
         `/api/v1/pharmacies/search?${params}`
       );
       setResults(data.pharmacies || []);
@@ -550,7 +555,7 @@ export default function CommunityPage() {
         state: state || undefined,
         usedGeolocation: !!lat,
         resultCount: data.total,
-        source: data.source as any,
+        source: data.source,
       });
     } catch (e) {
       console.error(e);
@@ -563,7 +568,7 @@ export default function CommunityPage() {
   // Sync state change with search
   useEffect(() => {
     doSearch(query, selectedState, coords?.lat, coords?.lng);
-  }, [selectedState, coords, doSearch]);
+  }, [query, selectedState, coords, doSearch]);
 
   // Debounce text search
   useEffect(() => {

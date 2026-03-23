@@ -302,48 +302,48 @@
 ## Phase 3 — Doctor Copilot + Referral Intelligence (Week 15–22)
 
 ### 3.1 Doctor Onboarding
-- [ ] Build doctor signup flow (separate from patient signup)
-- [ ] Add MDCN registration number field (Medical and Dental Council of Nigeria)
-- [ ] Add specialization selection
-- [ ] Add clinic association (link to existing clinic or mark as independent)
-- [ ] Build doctor verification queue (admin reviews before activating copilot access)
-- [ ] Send verification email on approval
-- [ ] Doctor-gated routes: check `role === 'doctor'` + `mdcn_verified === true`
+- [x] Build doctor signup flow (separate from patient signup)
+- [x] Add MDCN registration number field (Medical and Dental Council of Nigeria)
+- [x] Add specialization selection
+- [x] Add clinic association (link to existing clinic or mark as independent)
+- [x] Build doctor verification queue (admin reviews before activating copilot access)
+- [x] Send verification email on approval
+- [x] Doctor-gated routes: check `role === 'doctor'` + `mdcn_verified === true`
 
 ### 3.2 Doctor Copilot — Frontend
-- [ ] Build doctor dashboard (separate from patient dashboard)
-  - [ ] Active patients list
-  - [ ] Recent consultations
-  - [ ] Quick case analysis button
-- [ ] Build case analysis form:
-  - [ ] Patient info input (age, sex, or link to MedBridge patient)
-  - [ ] Chief complaint (free text or structured input)
-  - [ ] History of presenting illness
-  - [ ] Vitals input (BP, temp, pulse, respiratory rate, O2 sat)
-  - [ ] Systems review checkboxes
-  - [ ] Preliminary findings / examination notes
-- [ ] Build copilot results view:
-  - [ ] Clinical summary (AI-generated, editable)
-  - [ ] Top 5 differentials with reasoning and confidence
-  - [ ] Suggested investigations (tests to order)
-  - [ ] "For consideration only — clinical judgment required" banner
-  - [ ] Export as PDF button
-- [ ] Build clinical note generator
-  - [ ] Input: case data
-  - [ ] Output: SOAP note format (Subjective / Objective / Assessment / Plan)
-  - [ ] Editable before saving
-  - [ ] Copy to clipboard / export
+- [x] Build doctor dashboard (separate from patient dashboard)
+  - [x] Active patients list
+  - [x] Recent consultations
+  - [x] Quick case analysis button
+- [x] Build case analysis form:
+  - [x] Patient info input (age, sex, or link to MedBridge patient)
+  - [x] Chief complaint (free text or structured input)
+  - [x] History of presenting illness
+  - [x] Vitals input (BP, temp, pulse, respiratory rate, O2 sat)
+  - [x] Systems review checkboxes
+  - [x] Preliminary findings / examination notes
+- [x] Build copilot results view:
+  - [x] Clinical summary (AI-generated, editable)
+  - [x] Top 5 differentials with reasoning and confidence
+  - [x] Suggested investigations (tests to order)
+  - [x] "For consideration only — clinical judgment required" banner
+  - [x] Export as PDF button
+- [x] Build clinical note generator
+  - [x] Input: case data
+  - [x] Output: SOAP note format (Subjective / Objective / Assessment / Plan)
+  - [x] Editable before saving
+  - [x] Copy to clipboard / export
 
 ### 3.3 Doctor Copilot — Backend + AI
-- [ ] `POST /api/v1/copilot/analyze` — role-gated to `doctor`
-- [ ] `POST /api/v1/copilot/note` — generate SOAP note
-- [ ] Python AI: write `routers/copilot.py`
-- [ ] Write doctor copilot prompt template (`prompts/doctor_copilot/v1.j2`)
-  - [ ] Include Nigerian disease context in system prompt
-  - [ ] Include tropical medicine differential weighting
-- [ ] Apply AfriDx engine to copilot differentials (same as symptom checker)
-- [ ] Write SOAP note generation prompt
-- [ ] Structured output parsing with Pydantic
+- [x] `POST /api/v1/copilot/analyze` — role-gated to `doctor`
+- [x] `POST /api/v1/copilot/note` — generate SOAP note
+- [x] Python AI: write `routers/copilot.py`
+- [x] Write doctor copilot prompt template (`prompts/doctor_copilot/v1.j2`)
+  - [x] Include Nigerian disease context in system prompt
+  - [x] Include tropical medicine differential weighting
+- [x] Apply AfriDx engine to copilot differentials (same as symptom checker)
+- [x] Write SOAP note generation prompt
+- [x] Structured output parsing with Pydantic
 - [ ] Audit trail: log all copilot sessions with doctor ID, timestamp, prompt version
 
 ### 3.4 Referral Intelligence

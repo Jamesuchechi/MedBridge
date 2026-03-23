@@ -20,6 +20,8 @@ import symptomRoutes from "./routes/symptoms";
 import documentRoutes from "./routes/documents";
 import pharmaciesRoutes from "./routes/pharmacies";
 import drugRoutes from "./routes/drugs";
+import doctorRoutes from "./routes/doctors";
+import copilotRoutes from "./routes/copilot";
 import { analysisWorker } from "./workers/analysis.worker";
 
 const app = express();
@@ -44,6 +46,8 @@ app.use("/api/v1/symptoms", symptomRoutes);
 app.use("/api/v1/documents", documentRoutes);
 app.use("/api/v1/pharmacies", pharmaciesRoutes);
 app.use("/api/v1/drugs", drugRoutes);
+app.use("/api/v1/doctors", doctorRoutes);
+app.use("/api/v1/copilot", copilotRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });

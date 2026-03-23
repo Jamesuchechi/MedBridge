@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.moderationAuditLog = exports.drugPriceReports = exports.drugAvailabilityReports = exports.pharmacies = exports.drugQueryLogs = exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
+exports.doctorVerificationAudit = exports.doctorProfiles = exports.moderationAuditLog = exports.drugPriceReports = exports.drugAvailabilityReports = exports.pharmacies = exports.drugQueryLogs = exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 exports.roleEnum = (0, pg_core_1.pgEnum)("role", [
     "PATIENT",
@@ -15,6 +15,7 @@ exports.users = (0, pg_core_1.pgTable)("users", {
     name: (0, pg_core_1.text)("name"),
     role: (0, exports.roleEnum)("role").default("PATIENT").notNull(),
     isVerified: (0, pg_core_1.boolean)("is_verified").default(false).notNull(),
+    mdcnVerified: (0, pg_core_1.boolean)("mdcn_verified").default(false),
     clinicId: (0, pg_core_1.uuid)("clinic_id"),
     createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
@@ -114,8 +115,8 @@ exports.pharmacies = (0, pg_core_1.pgTable)("pharmacies", {
     lga: (0, pg_core_1.text)("lga"),
     phone: (0, pg_core_1.text)("phone"),
     email: (0, pg_core_1.text)("email"),
-    lat: (0, pg_core_1.integer)("lat"), // Storing as integer (e.g. multiplied by 10^7) or double precision
-    lng: (0, pg_core_1.integer)("lng"),
+    lat: (0, pg_core_1.doublePrecision)("lat"),
+    lng: (0, pg_core_1.doublePrecision)("lng"),
     osmId: (0, pg_core_1.text)("osm_id").unique(),
     osmType: (0, pg_core_1.text)("osm_type"), // 'node' | 'way' | 'relation'
     openingHours: (0, pg_core_1.text)("opening_hours"),
@@ -162,6 +163,44 @@ exports.moderationAuditLog = (0, pg_core_1.pgTable)("moderation_audit_log", {
     reportId: (0, pg_core_1.uuid)("report_id").notNull().references(() => exports.drugPriceReports.id, { onDelete: "cascade" }),
     adminId: (0, pg_core_1.text)("admin_id").notNull(),
     action: (0, pg_core_1.text)("action").notNull(),
+    previousStatus: (0, pg_core_1.text)("previous_status"),
+    newStatus: (0, pg_core_1.text)("new_status"),
+    note: (0, pg_core_1.text)("note"),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+});
+// ─── Doctor Onboarding ───────────────────────────────────────────────────────
+exports.doctorProfiles = (0, pg_core_1.pgTable)("doctor_profiles", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    userId: (0, pg_core_1.uuid)("user_id").notNull().unique().references(() => exports.users.id, { onDelete: "cascade" }),
+    fullName: (0, pg_core_1.text)("full_name").notNull(),
+    gender: (0, pg_core_1.text)("gender"),
+    phone: (0, pg_core_1.text)("phone"),
+    mdcnNumber: (0, pg_core_1.text)("mdcn_number").unique().notNull(),
+    mdcnYear: (0, pg_core_1.integer)("mdcn_year"),
+    specialization: (0, pg_core_1.text)("specialization").notNull(),
+    subSpecialization: (0, pg_core_1.text)("sub_specialization"),
+    yearsExperience: (0, pg_core_1.integer)("years_experience"),
+    currentHospital: (0, pg_core_1.text)("current_hospital"),
+    hospitalState: (0, pg_core_1.text)("hospital_state"),
+    hospitalLga: (0, pg_core_1.text)("hospital_lga"),
+    isIndependent: (0, pg_core_1.boolean)("is_independent").default(false).notNull(),
+    bio: (0, pg_core_1.text)("bio"),
+    languages: (0, pg_core_1.text)("languages").default('["English"]'), // JSON string array
+    consultationTypes: (0, pg_core_1.text)("consultation_types").default('["In-person"]'), // JSON string array
+    verificationStatus: (0, pg_core_1.text)("verification_status").default("pending").notNull(), // pending, under_review, approved, rejected, suspended
+    isCopilotEnabled: (0, pg_core_1.boolean)("is_copilot_enabled").default(false).notNull(),
+    rejectionReason: (0, pg_core_1.text)("rejection_reason"),
+    verifiedBy: (0, pg_core_1.uuid)("verified_by").references(() => exports.users.id),
+    verifiedAt: (0, pg_core_1.timestamp)("verified_at"),
+    submittedAt: (0, pg_core_1.timestamp)("submitted_at").defaultNow().notNull(),
+    updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+});
+exports.doctorVerificationAudit = (0, pg_core_1.pgTable)("doctor_verification_audit", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    doctorId: (0, pg_core_1.uuid)("doctor_id").notNull().references(() => exports.doctorProfiles.id, { onDelete: "cascade" }),
+    adminId: (0, pg_core_1.uuid)("admin_id").notNull().references(() => exports.users.id),
+    action: (0, pg_core_1.text)("action").notNull(), // approve, reject, suspend, reinstate, under_review, note, submit
     previousStatus: (0, pg_core_1.text)("previous_status"),
     newStatus: (0, pg_core_1.text)("new_status"),
     note: (0, pg_core_1.text)("note"),

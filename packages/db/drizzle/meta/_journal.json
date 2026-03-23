@@ -29,6 +29,13 @@
       "when": 1774259844654,
       "tag": "0004_misty_jetstream",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774293206442,
+      "tag": "0005_lucky_juggernaut",
+      "breakpoints": true
     }
   ]
 }
