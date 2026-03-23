@@ -1,22 +1,12 @@
 /**
- * OpenStreetMap Pharmacy Service
- * ================================
- * Uses two OSM APIs:
- *
- *  1. Overpass API  — for "find all pharmacies within radius of coords"
- *     (the heavy-duty spatial query API, free, no key needed)
- *
- *  2. Nominatim     — for "find pharmacies matching text query"
- *     (OSM's geocoding/search, free, requires User-Agent header)
- *
- * Rate limits:
- *   Overpass: ~10k req/day on public endpoint; self-host for production
- *   Nominatim: 1 req/s on public endpoint; self-host or use paid tier for prod
- *
- * Both are 100% free and require no API key.
+ * OpenStreetMap Pharmacy Service (Production Ready)
  */
 
 import axios from "axios";
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * CONFIG
+ * ──────────────────────────────────────────────────────────────────────────── */
 
 const OVERPASS_INSTANCES = [
   process.env.OVERPASS_API_URL,
@@ -26,233 +16,337 @@ const OVERPASS_INSTANCES = [
   "https://overpass.openstreetmap.ru/cgi/interpreter",
 ].filter(Boolean) as string[];
 
-const NOMINATIM_URL = process.env.NOMINATIM_API_URL || "https://nominatim.openstreetmap.org";
+const NOMINATIM_URL =
+  process.env.NOMINATIM_API_URL ||
+  "https://nominatim.openstreetmap.org";
 
-// Required by Nominatim ToS
-const USER_AGENT = `MedBridge/1.0 (https://medbridge.health; contact@medbridge.health)`;
+const USER_AGENT =
+  "MedBridge/1.0 (https://medbridge.health; contact@medbridge.health)";
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * TYPES
+ * ──────────────────────────────────────────────────────────────────────────── */
 
 export interface OsmPharmacy {
-  osmId:        string;
-  osmType:      "node" | "way" | "relation";
-  name:         string;
-  address:      string;
-  state:        string;
-  lga:          string | null;
-  lat:          number;
-  lng:          number;
-  phone:        string | null;
-  website:      string | null;
+  osmId: string;
+  osmType: "node" | "way" | "relation";
+  name: string;
+  address: string;
+  state: string;
+  lga: string | null;
+  lat: number;
+  lng: number;
+  distanceKm?: number;
+  phone: string | null;
+  website: string | null;
   openingHours: string | null;
 }
 
-// ─── Parse OSM tags into our shape ───────────────────────────────────────────
-function parseOsmElement(el: {
-  type: string;
+interface OverpassElement {
   id: number;
+  type: "node" | "way" | "relation";
   lat?: number;
   lon?: number;
   center?: { lat: number; lon: number };
   tags?: Record<string, string>;
-}): OsmPharmacy | null {
-  const tags = el.tags || {};
-  const name = tags["name"] || tags["brand"] || "Pharmacy";
+}
 
-  const lat = el.lat ?? el.center?.lat;
-  const lon = el.lon ?? el.center?.lon;
-  if (!lat || !lon) return null;
-
-  // Build address from OSM addr:* tags
-  const addrParts = [
-    tags["addr:housenumber"],
-    tags["addr:street"],
-    tags["addr:city"] || tags["addr:town"] || tags["addr:suburb"],
-  ].filter(Boolean);
-  const address = addrParts.length > 0
-    ? addrParts.join(", ")
-    : tags["addr:full"] || "Address not available";
-
-  const state = tags["addr:state"] || extractNigerianState(address) || "Nigeria";
-
-  return {
-    osmId:        String(el.id),
-    osmType:      el.type as OsmPharmacy["osmType"],
-    name,
-    address,
-    state,
-    lga:          tags["addr:suburb"] || tags["addr:quarter"] || null,
-    lat,
-    lng:          lon,
-    phone:        tags["phone"] || tags["contact:phone"] || null,
-    website:      tags["website"] || tags["contact:website"] || null,
-    openingHours: tags["opening_hours"] || null,
+interface NominatimResult {
+  osm_id: number | string;
+  osm_type: string;
+  name?: string;
+  display_name: string;
+  address?: {
+    state?: string;
+    county?: string;
+    suburb?: string;
+    city?: string;
+    road?: string;
   };
+  lat: string;
+  lon: string;
 }
 
-function extractNigerianState(text: string): string | null {
-  const STATES = [
-    "Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno",
-    "Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Abuja",
-    "Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi",
-    "Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo",
-    "Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara",
-  ];
-  const lower = text.toLowerCase();
-  return STATES.find((s) => lower.includes(s.toLowerCase())) || null;
+/* ────────────────────────────────────────────────────────────────────────────
+ * UTILITIES
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+// Haversine formula (distance in KM)
+function getDistanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ─── Overpass: nearby pharmacies by coordinates ───────────────────────────────
-/**
- * Finds all pharmacies within `radiusMeters` of the given coordinates.
- * Uses the Overpass QL query language with multi-instance fallback.
- */
-export async function findPharmaciesNearby(
+// Deduplicate by coordinates
+function dedupe<T extends { lat: number; lng: number }>(arr: T[]): T[] {
+  const seen = new Set<string>();
+  return arr.filter((item) => {
+    const key = `${item.lat}-${item.lng}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// Simple caches
+const nearbyCache = new Map<string, OsmPharmacy[]>();
+const searchCache = new Map<string, OsmPharmacy[]>();
+const geocodeCache = new Map<string, any>();
+
+// Rate limiter (Nominatim)
+let lastRequest = 0;
+async function rateLimit<T>(fn: () => Promise<T>): Promise<T> {
+  const diff = Date.now() - lastRequest;
+  if (diff < 1000) {
+    await new Promise((r) => setTimeout(r, 1000 - diff));
+  }
+  lastRequest = Date.now();
+  return fn();
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * OVERPASS (PRIMARY)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+async function fetchOverpass(
   lat: number,
   lng: number,
-  radiusMeters = 5000,
-  limit = 30
+  radius: number
 ): Promise<OsmPharmacy[]> {
-  // Overpass QL: find nodes/ways/relations tagged as pharmacy within radius
   const query = `
     [out:json][timeout:15];
     (
-      node["amenity"="pharmacy"](around:${radiusMeters},${lat},${lng});
-      way["amenity"="pharmacy"](around:${radiusMeters},${lat},${lng});
+      node["amenity"="pharmacy"](around:${radius},${lat},${lng});
+      way["amenity"="pharmacy"](around:${radius},${lat},${lng});
     );
-    out center ${limit};
+    out center;
   `;
 
   for (const url of OVERPASS_INSTANCES) {
     try {
-      console.log(`[OSM Overpass] Trying instance: ${url}`);
-      const { data } = await axios.post<{
-        elements: {
-          type: string;
-          id: number;
-          lat?: number;
-          lon?: number;
-          center?: { lat: number; lon: number };
-          tags?: Record<string, string>;
-        }[];
-      }>(url, `data=${encodeURIComponent(query)}`, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        timeout: 18000,
-      });
+      const { data } = await axios.post(
+        url,
+        `data=${encodeURIComponent(query)}`,
+        {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          timeout: 15000,
+        }
+      );
 
-      if (data && data.elements) {
-        return data.elements
-          .map(parseOsmElement)
-          .filter((p): p is OsmPharmacy => p !== null)
-          .slice(0, limit);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[OSM Overpass] Instance failed (${url}): ${msg}`);
-      // Continue to next instance
+      return (data.elements || [])
+        .map((el: OverpassElement) => {
+          const latVal = el.lat ?? el.center?.lat;
+          const lonVal = el.lon ?? el.center?.lon;
+          if (!latVal || !lonVal) return null;
+
+          const tags = el.tags || {};
+
+          return {
+            osmId: String(el.id),
+            osmType: el.type,
+            name: tags.name || tags.brand || "Pharmacy",
+            address:
+              tags["addr:full"] ||
+              [tags["addr:street"], tags["addr:city"]]
+                .filter(Boolean)
+                .join(", ") ||
+              "Address not available",
+            state: tags["addr:state"] || "Nigeria",
+            lga: tags["addr:suburb"] || null,
+            lat: latVal,
+            lng: lonVal,
+            phone: tags.phone || null,
+            website: tags.website || null,
+            openingHours: tags.opening_hours || null,
+          };
+        })
+        .filter(Boolean);
+    } catch {
+      continue;
     }
   }
 
-  console.error("[OSM Overpass] All instances failed.");
   return [];
 }
 
-// ─── Nominatim: text search for pharmacies ────────────────────────────────────
-/**
- * Searches for pharmacies matching a text query.
- * Optionally biased toward Nigerian states.
- *
- * Nominatim requires us to respect 1 req/s on the public server.
- * For production, either self-host or use a commercial provider.
- */
-export async function searchPharmaciesByName(
-  query: string,
-  countryCode = "ng", // Nigeria
-  limit = 20
-): Promise<OsmPharmacy[]> {
+/* ────────────────────────────────────────────────────────────────────────────
+ * NOMINATIM (FALLBACK)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export async function searchPharmaciesByName(query: string): Promise<OsmPharmacy[]> {
+  const params = new URLSearchParams({
+    q: query.toLowerCase().includes("pharmacy")
+      ? `${query} Nigeria`
+      : `${query} pharmacy Nigeria`,
+    format: "jsonv2",
+    addressdetails: "1",
+    limit: "20",
+    countrycodes: "ng",
+  });
+
+  const cacheKey = query.toLowerCase().trim();
+  if (searchCache.has(cacheKey)) {
+    return searchCache.get(cacheKey)!;
+  }
+
   try {
-    const params = new URLSearchParams({
-      q:              `${query} pharmacy`,
-      format:         "jsonv2",
-      addressdetails: "1",
-      limit:          String(limit),
-      countrycodes:   countryCode,
-      "accept-language": "en",
-    });
+    const { data } = await rateLimit(() =>
+      axios.get(`${NOMINATIM_URL}/search?${params}`, {
+        headers: { "User-Agent": USER_AGENT },
+        timeout: 12000, // Increased
+      })
+    );
 
-    const { data } = await axios.get<{
-      osm_id:   number;
-      osm_type: string;
-      lat:      string;
-      lon:      string;
-      display_name: string;
-      name:     string;
-      address:  Record<string, string>;
-    }[]>(`${NOMINATIM_URL}/search?${params}`, {
-      headers: { "User-Agent": USER_AGENT },
-      timeout: 10000,
-    });
+    if (!Array.isArray(data)) {
+      console.warn("[OSM SERVICE]: Nominatim returned non-array data:", data);
+      return [];
+    }
 
-    return data
-      .filter((r) => r.osm_type && r.lat && r.lon)
-      .map((r) => {
-        const addr = r.address || {};
-        const addrStr = [
-          addr.house_number,
-          addr.road,
-          addr.suburb || addr.neighbourhood,
-          addr.city || addr.town || addr.village,
-        ].filter(Boolean).join(", ") || r.display_name;
+    const results = data.map((r: NominatimResult) => ({
+      osmId: String(r.osm_id),
+      osmType: r.osm_type as "node" | "way" | "relation",
+      name: r.name || r.display_name.split(",")[0] || "Pharmacy",
+      address: r.display_name,
+      state: r.address?.state || "Nigeria",
+      lga: r.address?.county || r.address?.suburb || null,
+      lat: parseFloat(r.lat),
+      lng: parseFloat(r.lon),
+      phone: null,
+      website: null,
+      openingHours: null,
+    }));
 
-        return {
-          osmId:        String(r.osm_id),
-          osmType:      r.osm_type as OsmPharmacy["osmType"],
-          name:         r.name || "Pharmacy",
-          address:      addrStr,
-          state:        addr.state || extractNigerianState(r.display_name) || "Nigeria",
-          lga:          addr.county || addr.city_district || null,
-          lat:          parseFloat(r.lat),
-          lng:          parseFloat(r.lon),
-          phone:        null,
-          website:      null,
-          openingHours: null,
-        };
-      });
+    // Cache the successful results
+    searchCache.set(cacheKey, results);
+    return results;
   } catch (err) {
-    console.error("[Nominatim] Error:", err instanceof Error ? err.message : err);
+    console.error("[OSM SERVICE]: searchPharmaciesByName error:", err);
+
+    // Fallback: if we have a stale cache, use it on error
+    if (searchCache.has(cacheKey)) {
+      console.log("[OSM SERVICE]: Returning stale results from cache after error.");
+      return searchCache.get(cacheKey)!;
+    }
     return [];
   }
 }
 
-// ─── Geocode a location string ────────────────────────────────────────────────
-/**
- * Converts "Yaba, Lagos" → { lat, lng } so the frontend can
- * search by area name without needing a browser geolocation.
- */
-export async function geocodeLocation(locationText: string): Promise<{
+/* ────────────────────────────────────────────────────────────────────────────
+ * MAIN: HYBRID SEARCH + DISTANCE SORT
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export async function findNearestPharmacies({
+  lat,
+  lng,
+  radiusMeters = 5000,
+  limit = 20,
+  fallbackQuery,
+}: {
   lat: number;
   lng: number;
-  display: string;
-} | null> {
-  try {
-    const params = new URLSearchParams({
-      q:              `${locationText}, Nigeria`,
-      format:         "jsonv2",
-      limit:          "1",
-      countrycodes:   "ng",
-      "accept-language": "en",
-    });
+  radiusMeters?: number;
+  limit?: number;
+  fallbackQuery?: string;
+}): Promise<OsmPharmacy[]> {
+  const cacheKey = `${lat}-${lng}-${radiusMeters}-${limit}`;
 
-    const { data } = await axios.get<{ lat: string; lon: string; display_name: string }[]>(
-      `${NOMINATIM_URL}/search?${params}`,
-      { headers: { "User-Agent": USER_AGENT }, timeout: 8000 }
+  if (nearbyCache.has(cacheKey)) {
+    return nearbyCache.get(cacheKey)!;
+  }
+
+  // 1. Try Overpass first
+  let results = await fetchOverpass(lat, lng, radiusMeters);
+
+  // 2. Fallback to Nominatim if empty
+  if (results.length === 0 && fallbackQuery) {
+    results = await searchPharmaciesByName(fallbackQuery);
+  }
+
+  // 3. Deduplicate
+  results = dedupe(results);
+
+  // 4. Add distance
+  results = results.map((p) => ({
+    ...p,
+    distanceKm: getDistanceKm(lat, lng, p.lat, p.lng),
+  }));
+
+  // 5. Sort by nearest
+  results.sort((a, b) => (a.distanceKm! - b.distanceKm!));
+
+  // 6. Limit
+  const finalResults = results.slice(0, limit);
+
+  nearbyCache.set(cacheKey, finalResults);
+
+  return finalResults;
+}
+
+/**
+ * Wraps findNearestPharmacies to match controller's expected signature
+ */
+export async function findPharmaciesNearby(
+  lat: number,
+  lng: number,
+  radiusMeters: number = 5000
+): Promise<OsmPharmacy[]> {
+  return findNearestPharmacies({ lat, lng, radiusMeters });
+}
+
+/**
+ * General-purpose geocoding (Nominatim)
+ */
+export async function geocodeLocation(query: string) {
+  const params = new URLSearchParams({
+    q: query,
+    format: "jsonv2",
+    addressdetails: "1",
+    limit: "1",
+    countrycodes: "ng",
+  });
+
+  const cacheKey = query.toLowerCase().trim();
+  if (geocodeCache.has(cacheKey)) {
+    return geocodeCache.get(cacheKey);
+  }
+
+  try {
+    const { data } = await rateLimit(() =>
+      axios.get(`${NOMINATIM_URL}/search?${params}`, {
+        headers: { "User-Agent": USER_AGENT },
+        timeout: 12000, // Increased
+      })
     );
 
     if (!data.length) return null;
-    return {
-      lat:     parseFloat(data[0].lat),
-      lng:     parseFloat(data[0].lon),
-      display: data[0].display_name,
+    const r = data[0] as NominatimResult;
+
+    const result = {
+      lat: parseFloat(r.lat),
+      lng: parseFloat(r.lon),
+      address: r.display_name,
+      state: r.address?.state || "Nigeria",
+      lga: r.address?.county || r.address?.suburb || null,
     };
-  } catch {
-    return null;
+
+    geocodeCache.set(cacheKey, result);
+    return result;
+  } catch (err) {
+    console.error("[GEOCODE ERROR]:", err);
+    return geocodeCache.get(cacheKey) || null;
   }
 }

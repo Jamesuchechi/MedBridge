@@ -21,15 +21,15 @@ def get_llm_candidates(require_vision: bool = False) -> List[Tuple[Any, str, str
         # Prioritized models on OpenRouter
         if require_vision:
             or_models = [
-                "google/gemini-pro-1.5",
-                "google/gemini-flash-1.5",
+                "google/gemini-pro-2.5",
+                "google/gemini-flash-2.5",
                 "openai/gpt-4o-mini",
                 "anthropic/claude-3-haiku"
             ]
         else:
             or_models = [
-                "google/gemini-pro-1.5",
-                "google/gemini-flash-1.5",
+                "google/gemini-pro-2.5",
+                "google/gemini-flash-2.5",
                 "anthropic/claude-3-haiku",
                 "openai/gpt-4o-mini",
                 "meta-llama/llama-3.1-8b-instruct:free"
