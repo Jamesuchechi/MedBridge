@@ -1,3 +1,7 @@
+import * as dotenv from "dotenv";
+import path from "path";
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+
 import { supabase } from "../config/supabase";
 
 async function setup() {
@@ -24,7 +28,15 @@ async function setup() {
       console.log("Bucket created successfully.");
     }
   } else {
-    console.log(`Bucket ${bucketName} already exists.`);
+    console.log(`Bucket ${bucketName} already exists. Ensuring it is public...`);
+    const { error: updateError } = await supabase.storage.updateBucket(bucketName, {
+      public: true,
+    });
+    if (updateError) {
+      console.error("Error updating bucket:", updateError);
+    } else {
+      console.log("Bucket updated to public successfully.");
+    }
   }
 
   console.log("Storage setup complete.");

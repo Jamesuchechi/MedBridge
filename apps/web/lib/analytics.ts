@@ -71,6 +71,7 @@ export const track = {
   // ── CommunityRx (Phase 2.5) ──────────────────────────────────────────────────
   pharmacySearched: (p: {
     query?: string;
+    state?: string;
     usedGeolocation: boolean;
     resultCount: number;
     source: "overpass" | "nominatim" | "database" | "google_places";

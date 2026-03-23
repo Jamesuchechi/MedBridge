@@ -8,7 +8,7 @@ import { ResultView } from "@/components/documents/ResultView";
 import { MedDocument } from "@/types/documents";
 import { api } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
-import { I } from "@/components/ui/icons"; // Assuming icons are here or I'll define them
+import { Icons } from "@/components/ui/Icons";
 
 export default function DocumentsPage() {
   const user = useAuthStore(s => s.user);
@@ -84,7 +84,7 @@ export default function DocumentsPage() {
             onClick={() => setView("upload")}
             className="da-abtn bg-accent text-accent-foreground px-6 py-2 rounded-xl font-bold flex items-center gap-2 transition-all hover:scale-105"
           >
-            <I.Up /> Upload New
+            <Icons.Upload /> Upload New
           </button>
         )}
         {view === "upload" && (
@@ -92,7 +92,7 @@ export default function DocumentsPage() {
             onClick={() => setView("list")}
             className="da-nb flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            <I.ChL /> Back to List
+            <Icons.ChevronLeft /> Back to List
           </button>
         )}
       </header>

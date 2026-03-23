@@ -20,6 +20,7 @@ import symptomRoutes from "./routes/symptoms";
 import documentRoutes from "./routes/documents";
 import pharmaciesRoutes from "./routes/pharmacies";
 import drugRoutes from "./routes/drugs";
+import { analysisWorker } from "./workers/analysis.worker";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -114,6 +115,7 @@ initSocket(httpServer);
 
 httpServer.listen(port, () => {
   console.log(`[API]: Server is running at http://localhost:${port}`);
+  console.log(`[API]: Worker "${analysisWorker.name}" is listening for jobs.`);
 });
 
 export default app;

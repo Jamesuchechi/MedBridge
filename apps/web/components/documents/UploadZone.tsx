@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { UploadFile, DocType, MedDocument } from "@/types/documents";
 import { api } from "@/lib/api";
-import { I } from "@/components/ui/icons";
+import { Icons } from "@/components/ui/Icons";
 import { useAuthStore } from "@/store/auth.store";
 
 const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
@@ -117,7 +117,7 @@ export function UploadZone({ onComplete }: { onComplete: (doc: MedDocument) => v
         onClick={() => !queue.length && fileRef.current?.click()}
       >
         <div className="da-di w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
-          <I.Up />
+          <Icons.Upload />
         </div>
         <div className="da-dt text-xl font-bold font-syne">{dragging ? "Drop to add" : "Upload medical document"}</div>
         <div className="da-ds text-sm text-muted-foreground max-w-sm text-center">
@@ -202,7 +202,7 @@ export function UploadZone({ onComplete }: { onComplete: (doc: MedDocument) => v
                   className="da-qrm w-8 h-8 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive flex items-center justify-center hover:bg-destructive/20"
                   onClick={() => rem(qf.id)}
                 >
-                  <I.Tr />
+                  <Icons.Trash />
                 </button>
               </div>
             ))}
@@ -219,10 +219,15 @@ export function UploadZone({ onComplete }: { onComplete: (doc: MedDocument) => v
               </>
             ) : (
               <>
-                <I.Zp /> Analyse {queue.length} document{queue.length > 1 ? "s" : ""} with AI
+                <Icons.Zap className="w-5 h-5" /> Analyse {queue.length} document{queue.length > 1 ? "s" : ""} with AI
               </>
             )}
           </button>
+          {!canAnalyze && !isUploading && queue.length > 0 && (
+            <p className="text-[10px] text-center text-accent font-bold animate-pulse">
+              Please select a document type for each file to start analysis
+            </p>
+          )}
         </div>
       )}
     </div>

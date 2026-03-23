@@ -3,6 +3,8 @@
  */
 
 import axios from "axios";
+import https from "https";
+import http from "http";
 
 /* ────────────────────────────────────────────────────────────────────────────
  * CONFIG
@@ -17,11 +19,25 @@ const OVERPASS_INSTANCES = [
 ].filter(Boolean) as string[];
 
 const NOMINATIM_URL =
-  process.env.NOMINATIM_API_URL ||
-  "https://nominatim.openstreetmap.org";
+  process.env.NOMINATIM_API_URL || "https://nominatim.openstreetmap.org";
 
 const USER_AGENT =
   "MedBridge/1.0 (https://medbridge.health; contact@medbridge.health)";
+
+/**
+ * Dedicated axios instance with IPv4 forced at the instance level.
+ * follow-redirects (used internally by axios) only reads agents from the
+ * instance config — per-request httpAgent/httpsAgent spreads are ignored.
+ */
+const osmClient = axios.create({
+  timeout: 12000,
+  httpAgent: new http.Agent({ family: 4 }),
+  httpsAgent: new https.Agent({ family: 4 }),
+  headers: {
+    "User-Agent": USER_AGENT,
+    "Accept-Encoding": "gzip, compress, deflate, br",
+  },
+});
 
 /* ────────────────────────────────────────────────────────────────────────────
  * TYPES
@@ -67,6 +83,23 @@ interface NominatimResult {
   lon: string;
 }
 
+export interface GeocodeResult {
+  lat: number;
+  lng: number;
+  address: string;
+  state: string;
+  lga: string | null;
+}
+
+export interface AiSearchIntent {
+  intent: string;
+  location?: string;
+  extractedName?: string;
+  state?: string;
+  suggestedQueries: string[];
+  confidence: number;
+}
+
 /* ────────────────────────────────────────────────────────────────────────────
  * UTILITIES
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -105,9 +138,9 @@ function dedupe<T extends { lat: number; lng: number }>(arr: T[]): T[] {
 // Simple caches
 const nearbyCache = new Map<string, OsmPharmacy[]>();
 const searchCache = new Map<string, OsmPharmacy[]>();
-const geocodeCache = new Map<string, any>();
+const geocodeCache = new Map<string, GeocodeResult>();
 
-// Rate limiter (Nominatim)
+// Rate limiter (Nominatim: max 1 req/sec)
 let lastRequest = 0;
 async function rateLimit<T>(fn: () => Promise<T>): Promise<T> {
   const diff = Date.now() - lastRequest;
@@ -136,9 +169,10 @@ async function fetchOverpass(
     out center;
   `;
 
+  console.log(`[OSM]: Fetching Overpass for ${lat},${lng} radius ${radius}`);
   for (const url of OVERPASS_INSTANCES) {
     try {
-      const { data } = await axios.post(
+      const { data } = await osmClient.post(
         url,
         `data=${encodeURIComponent(query)}`,
         {
@@ -187,62 +221,73 @@ async function fetchOverpass(
  * NOMINATIM (FALLBACK)
  * ──────────────────────────────────────────────────────────────────────────── */
 
-export async function searchPharmaciesByName(query: string): Promise<OsmPharmacy[]> {
-  const params = new URLSearchParams({
-    q: query.toLowerCase().includes("pharmacy")
-      ? `${query} Nigeria`
-      : `${query} pharmacy Nigeria`,
-    format: "jsonv2",
-    addressdetails: "1",
-    limit: "20",
-    countrycodes: "ng",
-  });
-
-  const cacheKey = query.toLowerCase().trim();
+export async function searchPharmaciesByName(
+  query: string,
+  state?: string
+): Promise<OsmPharmacy[]> {
+  const cacheKey = `${query}-${state}`.toLowerCase().trim();
   if (searchCache.has(cacheKey)) {
     return searchCache.get(cacheKey)!;
   }
 
-  try {
-    const { data } = await rateLimit(() =>
-      axios.get(`${NOMINATIM_URL}/search?${params}`, {
-        headers: { "User-Agent": USER_AGENT },
-        timeout: 12000, // Increased
-      })
-    );
+  // Variations of queries to try
+  const queries = [
+    query.toLowerCase().includes("pharmacy") ? query : `${query} pharmacy`,
+    `pharmacies in ${query}`,
+  ];
 
-    if (!Array.isArray(data)) {
-      console.warn("[OSM SERVICE]: Nominatim returned non-array data:", data);
-      return [];
-    }
-
-    const results = data.map((r: NominatimResult) => ({
-      osmId: String(r.osm_id),
-      osmType: r.osm_type as "node" | "way" | "relation",
-      name: r.name || r.display_name.split(",")[0] || "Pharmacy",
-      address: r.display_name,
-      state: r.address?.state || "Nigeria",
-      lga: r.address?.county || r.address?.suburb || null,
-      lat: parseFloat(r.lat),
-      lng: parseFloat(r.lon),
-      phone: null,
-      website: null,
-      openingHours: null,
-    }));
-
-    // Cache the successful results
-    searchCache.set(cacheKey, results);
-    return results;
-  } catch (err) {
-    console.error("[OSM SERVICE]: searchPharmaciesByName error:", err);
-
-    // Fallback: if we have a stale cache, use it on error
-    if (searchCache.has(cacheKey)) {
-      console.log("[OSM SERVICE]: Returning stale results from cache after error.");
-      return searchCache.get(cacheKey)!;
-    }
-    return [];
+  if (state && !query.toLowerCase().includes(state.toLowerCase())) {
+    queries.unshift(`${query} ${state}`);
   }
+
+  for (let i = 0; i < queries.length; i++) {
+    const qStr = queries[i];
+    // Nominatim requirement: 1 request per second
+    if (i > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    const params = new URLSearchParams({
+      q: qStr,
+      format: "jsonv2",
+      addressdetails: "1",
+      limit: "20",
+      countrycodes: "ng",
+    });
+
+    console.log(`[OSM]: Searching Nominatim: ${qStr}`);
+    try {
+      const { data } = await rateLimit(() =>
+        osmClient.get(`${NOMINATIM_URL}/search?${params}`)
+      );
+
+      if (Array.isArray(data) && data.length > 0) {
+        const results = data.map((r: NominatimResult) => ({
+          osmId: String(r.osm_id),
+          osmType: r.osm_type as "node" | "way" | "relation",
+          name: r.name || r.display_name.split(",")[0] || "Pharmacy",
+          address: r.display_name,
+          state: r.address?.state || "Nigeria",
+          lga: r.address?.county || r.address?.suburb || null,
+          lat: parseFloat(r.lat),
+          lng: parseFloat(r.lon),
+          phone: null,
+          website: null,
+          openingHours: null,
+        }));
+        searchCache.set(cacheKey, results);
+        return results;
+      }
+    } catch (err: any) {
+      if (err.response?.status === 429) {
+        console.error("[OSM SERVICE]: Nominatim rate limit hit (429). Stopping retries.");
+        break; 
+      }
+      console.error(`[OSM SERVICE]: searchPharmaciesByName error for query "${qStr}":`, err);
+    }
+  }
+
+  return [];
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -286,7 +331,7 @@ export async function findNearestPharmacies({
   }));
 
   // 5. Sort by nearest
-  results.sort((a, b) => (a.distanceKm! - b.distanceKm!));
+  results.sort((a, b) => a.distanceKm! - b.distanceKm!);
 
   // 6. Limit
   const finalResults = results.slice(0, limit);
@@ -310,7 +355,9 @@ export async function findPharmaciesNearby(
 /**
  * General-purpose geocoding (Nominatim)
  */
-export async function geocodeLocation(query: string) {
+export async function geocodeLocation(
+  query: string
+): Promise<GeocodeResult | null> {
   const params = new URLSearchParams({
     q: query,
     format: "jsonv2",
@@ -321,15 +368,12 @@ export async function geocodeLocation(query: string) {
 
   const cacheKey = query.toLowerCase().trim();
   if (geocodeCache.has(cacheKey)) {
-    return geocodeCache.get(cacheKey);
+    return geocodeCache.get(cacheKey) || null;
   }
 
   try {
     const { data } = await rateLimit(() =>
-      axios.get(`${NOMINATIM_URL}/search?${params}`, {
-        headers: { "User-Agent": USER_AGENT },
-        timeout: 12000, // Increased
-      })
+      osmClient.get(`${NOMINATIM_URL}/search?${params}`)
     );
 
     if (!data.length) return null;
@@ -348,5 +392,25 @@ export async function geocodeLocation(query: string) {
   } catch (err) {
     console.error("[GEOCODE ERROR]:", err);
     return geocodeCache.get(cacheKey) || null;
+  }
+}
+
+/**
+ * AI-powered search intent analysis
+ */
+export async function getSearchIntentFromAi(
+  query: string,
+  state?: string
+): Promise<AiSearchIntent | null> {
+  const aiUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
+  try {
+    const { data } = await axios.post(`${aiUrl}/internal/pharmacy/search-intent`, {
+      query,
+      state
+    }, { timeout: 8000 });
+    return data;
+  } catch (err) {
+    console.error("[AI SEARCH INTENT ERROR]:", err);
+    return null;
   }
 }

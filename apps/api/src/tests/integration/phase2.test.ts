@@ -2,18 +2,11 @@
  * Phase 2.6 — Integration Tests (Jest + Supertest)
  * ==================================================
  * Tests API route handlers with a real Express app but mocked DB calls.
- *
- * Setup:
- *   pnpm add -D supertest @types/supertest --filter @medbridge/api
- *
- * Add to apps/api/package.json:
- *   "test:integration": "jest --testPathPattern=integration"
- *
- * Run:
- *   pnpm --filter @medbridge/api test:integration
  */
 
 import request from "supertest";
+import express from "express";
+import pharmacyRoutes from "../../routes/pharmacies";
 
 // ─── Mock the DB module before importing anything that uses it ────────────────
 jest.mock("@medbridge/db", () => ({
@@ -38,7 +31,7 @@ jest.mock("@medbridge/db", () => ({
 }));
 
 // ─── Mock OSM service ─────────────────────────────────────────────────────────
-jest.mock("../services/osm.service", () => ({
+jest.mock("../../services/osm.service", () => ({
   findPharmaciesNearby: jest.fn().mockResolvedValue([
     {
       osmId:        "123456",
@@ -74,12 +67,6 @@ jest.mock("../services/osm.service", () => ({
     display: "Lekki, Lagos, Nigeria",
   }),
 }));
-
-// ─── Import app after mocks ───────────────────────────────────────────────────
-// The Express app is created without starting the server (no httpServer.listen)
-// For these tests, we create a minimal test app instead.
-import express from "express";
-import pharmacyRoutes from "../routes/pharmacies";
 
 const app = express();
 app.use(express.json());

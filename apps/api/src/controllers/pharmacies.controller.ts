@@ -1,21 +1,4 @@
-/**
- * Pharmacies Controller
- * =====================
- * All routes under /api/v1/pharmacies
- *
- * GET  /search                 — Nearby search (Overpass) or text search (Nominatim)
- * GET  /geocode                — Convert location string → coordinates
- * GET  /:id                    — Pharmacy detail + availability + prices
- * POST /report-availability    — Crowdsourced stock report (48h TTL)
- * POST /report-price           — Crowdsourced price submission
- * GET  /prices/:drugId         — Price comparison across pharmacies
- *
- * Moderation (SUPER_ADMIN only):
- * GET  /admin/moderation       — Paginated queue of pending/flagged reports
- * GET  /admin/moderation/stats — Dashboard stats for the moderation queue
- * PATCH /admin/moderation/:id  — Approve / reject / flag a report
- * GET  /admin/moderation/:id/audit — Full audit trail for a report
- */
+
 
 import { Request, Response } from "express";
 import { db, drugs } from "@medbridge/db";
@@ -28,11 +11,13 @@ import {
 import { eq, and, gte, desc, ilike, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
-  findPharmaciesNearby,
-  searchPharmaciesByName,
-  geocodeLocation,
+  findPharmaciesNearby as findOsmNearby,
+  searchPharmaciesByName as searchOsmByName,
+  geocodeLocation as geocodeOsm,
+  getSearchIntentFromAi,
   OsmPharmacy,
 } from "../services/osm.service";
+import * as googleMaps from "../services/google-maps.service";
 
 // ─── Validation schemas ───────────────────────────────────────────────────────
 const searchSchema = z.object({
@@ -143,16 +128,93 @@ export const searchPharmacies = async (req: Request, res: Response) => {
   }
 
   const { q, lat, lng, radius, state } = parse.data;
+  let osmResults: OsmPharmacy[] = [];
 
   try {
-    let osmResults: OsmPharmacy[] = [];
+    let source: "google" | "overpass" | "nominatim" | "database" = "google";
 
     if (lat && lng) {
-      // Coordinates provided → Overpass nearby search
-      osmResults = await findPharmaciesNearby(lat, lng, radius);
+      // 1. Try Google Maps Nearby Search first
+      console.log(`[SEARCH]: Trying Google Maps nearby search for ${lat},${lng}`);
+      osmResults = await googleMaps.searchPharmaciesNearby(lat, lng, radius);
+      source = "google";
+
+      // 2. Fallback to OSM Overpass if empty
+      if (osmResults.length === 0) {
+        console.log("[SEARCH]: Google returned no results/failed. Falling back to OSM Overpass.");
+        osmResults = await findOsmNearby(lat, lng, radius);
+        source = "overpass";
+      }
     } else if (q) {
-      // Text-only → Nominatim search
-      osmResults = await searchPharmaciesByName(q);
+      // Text-only hybrid approach:
+      const searchQuery = state ? `${q}, ${state}` : q;
+
+      // 1. Try Google Maps Geocoding + Nearby Search
+      console.log(`[SEARCH]: Trying Google Maps geocode for "${searchQuery}"`);
+      const coords = await googleMaps.geocodeLocation(searchQuery);
+      if (coords) {
+        osmResults = await googleMaps.searchPharmaciesNearby(coords.lat, coords.lng, radius);
+        if (osmResults.length > 0) {
+          source = "google";
+        } else {
+          // Fallback to OSM nearby if Google geocoded but found no pharmacies nearby
+          osmResults = await findOsmNearby(coords.lat, coords.lng, radius);
+          if (osmResults.length > 0) source = "overpass";
+        }
+      }
+
+      // 2. Fallback to Google Text Search if still empty
+      if (osmResults.length === 0) {
+        console.log(`[SEARCH]: Falling back to Google Text Search for "${searchQuery}"`);
+        osmResults = await googleMaps.searchPharmaciesByName(q, state);
+        if (osmResults.length > 0) source = "google";
+      }
+
+      // 3. Fallback to OSM Nominatim if still empty
+      if (osmResults.length === 0) {
+        console.log(`[SEARCH]: Falling back to OSM Nominatim for "${searchQuery}"`);
+        const osmCoords = await geocodeOsm(searchQuery);
+        if (osmCoords) {
+          osmResults = await findOsmNearby(osmCoords.lat, osmCoords.lng, radius);
+          if (osmResults.length > 0) source = "overpass";
+        }
+      }
+
+      // 4. AI Fallback: ONLY if still empty and it's a specific search
+      if (osmResults.length === 0 && q.length > 2) {
+        const aiIntent = await getSearchIntentFromAi(q, state);
+        console.log("[API]: AI Search Intent:", aiIntent);
+        
+        if (aiIntent && aiIntent.confidence > 0.4 && aiIntent.suggestedQueries.length > 0) {
+          const suggested = aiIntent.suggestedQueries[0];
+          
+          // Try Google first for suggestion
+          const sugCoords = await googleMaps.geocodeLocation(suggested);
+          if (sugCoords) {
+            osmResults = await googleMaps.searchPharmaciesNearby(sugCoords.lat, sugCoords.lng, radius);
+            if (osmResults.length > 0) source = "google";
+          }
+
+          if (osmResults.length === 0) {
+            osmResults = await googleMaps.searchPharmaciesByName(suggested, aiIntent.state || state);
+            if (osmResults.length > 0) source = "google";
+          }
+
+          // Then OSM fallback for suggestion
+          if (osmResults.length === 0) {
+            const osmSugCoords = await geocodeOsm(suggested);
+            if (osmSugCoords) {
+              osmResults = await findOsmNearby(osmSugCoords.lat, osmSugCoords.lng, radius);
+              if (osmResults.length > 0) source = "overpass";
+            }
+          }
+
+          if (osmResults.length === 0) {
+            osmResults = await searchOsmByName(suggested, aiIntent.state || state);
+            if (osmResults.length > 0) source = "nominatim";
+          }
+        }
+      }
     } else if (state) {
       // State filter only → search our DB
       const dbResults = await db
@@ -171,13 +233,15 @@ export const searchPharmacies = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Provide lat/lng, a search query, or a state." });
     }
 
-    // Upsert OSM results into DB asynchronously (fire and forget — don't block response)
-    Promise.all(osmResults.map(upsertOsmPharmacy)).catch(console.error);
+    // Upsert OSM results into DB asynchronously
+    if (osmResults.length > 0) {
+      Promise.all(osmResults.map(upsertOsmPharmacy)).catch(console.error);
+    }
 
     return res.json({
       pharmacies: osmResults,
       total: osmResults.length,
-      source: q && !lat ? "nominatim" : "overpass",
+      source,
     });
   } catch (err) {
     console.error("[SEARCH PHARMACIES]:", err);
@@ -190,7 +254,14 @@ export const geocode = async (req: Request, res: Response) => {
   const q = (req.query.q as string)?.trim();
   if (!q) return res.status(400).json({ error: "q parameter required" });
 
-  const result = await geocodeLocation(q);
+  console.log(`[GEOCODE]: Trying Google Maps geocode for "${q}"`);
+  let result = await googleMaps.geocodeLocation(q);
+  
+  if (!result) {
+    console.log(`[GEOCODE]: Google failed. Falling back to OSM geocode for "${q}"`);
+    result = await geocodeOsm(q);
+  }
+
   if (!result) return res.status(404).json({ error: "Location not found" });
 
   res.json(result);

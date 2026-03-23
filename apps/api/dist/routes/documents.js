@@ -8,4 +8,5 @@ router.post("/", documents_controller_1.createDocument);
 router.get("/", documents_controller_1.getDocuments);
 router.get("/:id", documents_controller_1.getDocumentById);
 router.delete("/:id", documents_controller_1.deleteDocument);
+router.post("/:id/analyze", documents_controller_1.reAnalyzeDocument);
 exports.default = router;

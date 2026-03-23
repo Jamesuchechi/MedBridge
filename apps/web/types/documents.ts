@@ -38,6 +38,7 @@ export interface MedDocument {
   fileName: string;
   fileType: string;
   fileSize?: number;
+  type: DocType;
   status: DocStatus;
   uploadedAt: string;
   createdAt: string;

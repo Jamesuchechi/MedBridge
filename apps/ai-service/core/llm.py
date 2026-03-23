@@ -21,18 +21,18 @@ def get_llm_candidates(require_vision: bool = False) -> List[Tuple[Any, str, str
         # Prioritized models on OpenRouter
         if require_vision:
             or_models = [
-                "google/gemini-pro-2.5",
-                "google/gemini-flash-2.5",
+                "google/gemini-2.0-flash-001",
+                "google/gemini-flash-1.5", 
                 "openai/gpt-4o-mini",
-                "anthropic/claude-3-haiku"
+                "anthropic/claude-3-haiku",
+                "google/gemini-pro-1.5"
             ]
         else:
             or_models = [
-                "google/gemini-pro-2.5",
-                "google/gemini-flash-2.5",
                 "anthropic/claude-3-haiku",
                 "openai/gpt-4o-mini",
-                "meta-llama/llama-3.1-8b-instruct:free"
+                "meta-llama/llama-3.3-70b-instruct:free",
+                "google/gemini-2.0-flash-001"
             ]
         for m in or_models:
             candidates.append((or_client, "openrouter", m))
@@ -49,7 +49,7 @@ def get_llm_candidates(require_vision: bool = False) -> List[Tuple[Any, str, str
     if groq_key and groq_key.startswith("gsk_"):
         groq_client = Groq(api_key=groq_key)
         if require_vision:
-            candidates.append((groq_client, "groq", "llama-3.2-11b-vision-preview"))
+            candidates.append((groq_client, "groq", "llama-3.2-90b-vision-preview"))
         else:
             candidates.append((groq_client, "groq", "llama-3.1-70b-versatile"))
             candidates.append((groq_client, "groq", "llama-3.1-8b-instant"))
@@ -89,14 +89,18 @@ async def call_llm_with_fallback(
         try:
             print(f"DEBUG: Trying LLM {provider}:{model}")
             if provider in ["openai", "openrouter", "groq"]:
-                # Groq and OpenAI share the same interface
-                res = client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    response_format=response_format if provider in ["openai", "groq"] else None,
-                    max_tokens=max_tokens,
-                    temperature=temperature
-                )
+                # Groq, OpenRouter and OpenAI share the same interface
+                params = {
+                    "model": model,
+                    "messages": messages,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature
+                }
+                
+                if response_format and provider in ["openai", "groq", "openrouter"]:
+                    params["response_format"] = response_format
+                
+                res = client.chat.completions.create(**params)
                 content = res.choices[0].message.content
                 if content:
                     return content, provider, model

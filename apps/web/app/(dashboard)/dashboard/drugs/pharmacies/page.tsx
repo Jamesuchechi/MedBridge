@@ -100,12 +100,14 @@ const CSS = `
 .crx-detail { animation:crx-in .3s ease; }
 .crx-back { display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:var(--text2); background:none; border:none; cursor:pointer; padding:0; margin-bottom:24px; transition:color .2s; }
 .crx-back:hover { color:var(--accent); }
+.crx-back svg { width:14px; height:14px; flex-shrink:0; }
 .crx-dh { display:flex; align-items:flex-start; gap:16px; margin-bottom:24px; }
 .crx-dh-icon { width:52px;height:52px; border-radius:14px; background:rgba(0,229,160,.1); border:1px solid rgba(0,229,160,.2); display:flex;align-items:center;justify-content:center; color:var(--accent); flex-shrink:0; }
 .crx-dh-icon svg { width:24px;height:24px; }
 .crx-dn { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; }
 .crx-da { font-size:13px; color:var(--text2); margin-top:4px; }
 .crx-hours { font-size:12px; margin-top:4px; display:flex; align-items:center; gap:5px; }
+.crx-hours svg { width:13px; height:13px; flex-shrink:0; }
 .crx-hours.open  { color:var(--accent); }
 .crx-hours.unknown { color:var(--text3); }
 
@@ -125,6 +127,7 @@ const CSS = `
 .crx-avail-name { font-size:14px; font-weight:600; }
 .crx-avail-time { font-size:11px; color:var(--text3); font-family:'DM Mono',monospace; margin-top:2px; }
 .crx-badge { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-family:'DM Mono',monospace; font-weight:700; padding:3px 9px; border-radius:100px; }
+.crx-badge svg { width:10px; height:10px; flex-shrink:0; }
 .crx-badge-in   { background:rgba(0,229,160,.1); color:var(--accent); border:1px solid rgba(0,229,160,.2); }
 .crx-badge-out  { background:rgba(255,92,92,.1); color:#ff5c5c; border:1px solid rgba(255,92,92,.2); }
 .crx-price-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border,rgba(255,255,255,.06)); }
@@ -144,6 +147,7 @@ const CSS = `
 @keyframes crx-fade { from{opacity:0} to{opacity:1} }
 .crx-modal { width:100%; max-width:460px; background:#0c0e12; border:1px solid rgba(255,255,255,.1); border-radius:24px; padding:32px; position:relative; box-shadow:0 30px 60px rgba(0,0,0,.5); }
 .crx-modal-close { position:absolute; top:18px; right:18px; width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.06); border:none; color:var(--text2); display:flex;align-items:center;justify-content:center; cursor:pointer; }
+.crx-modal-close svg { width:16px; height:16px; }
 .crx-modal h3 { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; margin-bottom:4px; }
 .crx-modal-sub { font-size:12px; color:var(--text3); margin-bottom:20px; }
 .crx-field { margin-bottom:14px; }
@@ -152,6 +156,7 @@ const CSS = `
 .crx-field-input:focus { border-color:rgba(0,229,160,.5); }
 .crx-toggle-row { display:flex; gap:8px; }
 .crx-toggle { flex:1; padding:10px; border:1.5px solid var(--border,rgba(255,255,255,.08)); border-radius:11px; background:var(--glass,rgba(255,255,255,.03)); color:var(--text2); font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; display:flex;align-items:center;justify-content:center;gap:6px; }
+.crx-toggle svg { width:14px; height:14px; flex-shrink:0; }
 .crx-toggle.yes { border-color:rgba(0,229,160,.5); background:rgba(0,229,160,.1); color:var(--accent); }
 .crx-toggle.no  { border-color:rgba(255,92,92,.5); background:rgba(255,92,92,.1); color:#ff5c5c; }
 .crx-submit { width:100%; padding:14px; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#000; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; margin-top:18px; transition:all .2s; }

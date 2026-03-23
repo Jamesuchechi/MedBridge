@@ -20,16 +20,26 @@ module.exports = {
           secondary: "var(--accent-secondary)",
           tertiary: "var(--accent-tertiary)",
         },
+        // Dashboard tokens (mapping shorter names to variables)
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--bg)",
+        },
+        accent2: "var(--accent2)",
+        accent3: "var(--accent3)",
         background: {
-          DEFAULT: "var(--bg-primary)",
-          secondary: "var(--bg-secondary)",
-          card: "var(--bg-card)",
+          DEFAULT: "var(--bg)",
+          secondary: "var(--bg2)",
+          tertiary: "var(--bg3)",
+          card: "var(--card-bg)",
         },
         foreground: {
-          DEFAULT: "var(--text-primary)",
-          muted: "var(--text-secondary)",
-          subtle: "var(--text-muted)",
+          DEFAULT: "var(--text)",
+          muted: "var(--text2)",
+          subtle: "var(--text3)",
         },
+        border: "var(--border)",
+        muted: "var(--bg2)",
       },
       borderRadius: {
         lg: "var(--radius)",

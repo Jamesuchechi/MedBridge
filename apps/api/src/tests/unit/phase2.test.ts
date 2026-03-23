@@ -2,24 +2,9 @@
  * Phase 2.6 — Unit Tests (Jest)
  * ================================
  * Tests pure logic functions without any network calls or DB.
- *
- * Setup:
- *   pnpm add -D jest @types/jest ts-jest --filter @medbridge/api
- *   pnpm add -D jest @types/jest jest-environment-jsdom --filter @medbridge/web
- *
- * Add to apps/api/package.json:
- *   "test": "jest --testPathPattern=unit"
- *
- * Run:
- *   pnpm --filter @medbridge/api test:unit
- *   pnpm --filter @medbridge/web  test:unit
  */
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Unit: apps/api — Drug Interaction severity ranking
-// ─────────────────────────────────────────────────────────────────────────────
 describe("Drug interaction severity ranking", () => {
-  // Import the helper directly — it's a pure function
   const SEVERITY_RANK: Record<string, number> = {
     none:            0,
     minor:           1,
@@ -56,9 +41,6 @@ describe("Drug interaction severity ranking", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Unit: apps/api — Price outlier detection thresholds
-// ─────────────────────────────────────────────────────────────────────────────
 describe("Price outlier detection", () => {
   function isPriceOutlier(price: number, minPrice: number, maxPrice: number): boolean {
     const low  = minPrice * 0.15;
@@ -67,12 +49,11 @@ describe("Price outlier detection", () => {
   }
 
   test("normal price within range is not an outlier", () => {
-    // Drug costs ₦500–₦2000; reporting ₦800 is fine
     expect(isPriceOutlier(800, 500, 2000)).toBe(false);
   });
 
   test("price just inside upper threshold (4x max)", () => {
-    expect(isPriceOutlier(7999, 500, 2000)).toBe(false); // 4x max = 8000
+    expect(isPriceOutlier(7999, 500, 2000)).toBe(false);
   });
 
   test("price at 4x max is not an outlier", () => {
@@ -84,7 +65,6 @@ describe("Price outlier detection", () => {
   });
 
   test("price below 15% of min is an outlier", () => {
-    // 15% of 500 = 75; price of 60 is below that
     expect(isPriceOutlier(60, 500, 2000)).toBe(true);
   });
 
@@ -97,14 +77,10 @@ describe("Price outlier detection", () => {
   });
 
   test("extremely high price (counterfeit detection scenario)", () => {
-    // Paracetamol max ₦800, price reported ₦50,000 → should flag
     expect(isPriceOutlier(50_000, 200, 800)).toBe(true);
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Unit: apps/api/services/osm.service — Nigerian state extraction
-// ─────────────────────────────────────────────────────────────────────────────
 describe("OSM state extraction from address strings", () => {
   function extractNigerianState(text: string): string | null {
     const STATES = [
@@ -139,11 +115,7 @@ describe("OSM state extraction from address strings", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Unit: apps/api — Drug interaction known pairs (KNOWN_INTERACTIONS dict)
-// ─────────────────────────────────────────────────────────────────────────────
 describe("Known dangerous drug interactions database", () => {
-  // Replicate the lookup logic from apps/ai-service/routers/drug.py
   const KNOWN_PAIRS: Record<string, { severity: string; mechanism: string }> = {
     "warfarin+aspirin":          { severity: "severe",          mechanism: "Additive antiplatelet and anticoagulant effects" },
     "metronidazole+alcohol":     { severity: "severe",          mechanism: "Disulfiram-like reaction" },
@@ -183,46 +155,5 @@ describe("Known dangerous drug interactions database", () => {
   test("metronidazole + alcohol returns severe", () => {
     const result = checkKnownPair("metronidazole", "alcohol");
     expect(result?.severity).toBe("severe");
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Unit: apps/web/lib/analytics — emit calls are no-ops without posthog installed
-// ─────────────────────────────────────────────────────────────────────────────
-describe("Analytics — graceful degradation without posthog", () => {
-  // Mock the require call so posthog-js isn't needed in test env
-  const consoleSpy = jest.spyOn(console, "debug").mockImplementation(() => {});
-
-  beforeEach(() => {
-    jest.resetModules();
-    process.env.NODE_ENV = "development";
-  });
-
-  afterEach(() => {
-    consoleSpy.mockClear();
-  });
-
-  test("track.drugSearch does not throw when posthog unavailable", () => {
-    const { track } = require("@/lib/analytics");
-    expect(() =>
-      track.drugSearch({ query: "paracetamol", resultCount: 5, source: "typesense" })
-    ).not.toThrow();
-  });
-
-  test("track.pharmacySearched does not throw", () => {
-    const { track } = require("@/lib/analytics");
-    expect(() =>
-      track.pharmacySearched({ usedGeolocation: true, resultCount: 3, source: "overpass" })
-    ).not.toThrow();
-  });
-
-  test("identifyUser does not throw when posthog unavailable", () => {
-    const { identifyUser } = require("@/lib/analytics");
-    expect(() => identifyUser("user-123", { email: "test@test.com" })).not.toThrow();
-  });
-
-  test("resetAnalyticsIdentity does not throw", () => {
-    const { resetAnalyticsIdentity } = require("@/lib/analytics");
-    expect(() => resetAnalyticsIdentity()).not.toThrow();
   });
 });

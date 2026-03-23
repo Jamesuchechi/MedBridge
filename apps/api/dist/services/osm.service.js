@@ -10,7 +10,10 @@ exports.searchPharmaciesByName = searchPharmaciesByName;
 exports.findNearestPharmacies = findNearestPharmacies;
 exports.findPharmaciesNearby = findPharmaciesNearby;
 exports.geocodeLocation = geocodeLocation;
+exports.getSearchIntentFromAi = getSearchIntentFromAi;
 const axios_1 = __importDefault(require("axios"));
+const https_1 = __importDefault(require("https"));
+const http_1 = __importDefault(require("http"));
 /* ────────────────────────────────────────────────────────────────────────────
  * CONFIG
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -21,9 +24,22 @@ const OVERPASS_INSTANCES = [
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.openstreetmap.ru/cgi/interpreter",
 ].filter(Boolean);
-const NOMINATIM_URL = process.env.NOMINATIM_API_URL ||
-    "https://nominatim.openstreetmap.org";
+const NOMINATIM_URL = process.env.NOMINATIM_API_URL || "https://nominatim.openstreetmap.org";
 const USER_AGENT = "MedBridge/1.0 (https://medbridge.health; contact@medbridge.health)";
+/**
+ * Dedicated axios instance with IPv4 forced at the instance level.
+ * follow-redirects (used internally by axios) only reads agents from the
+ * instance config — per-request httpAgent/httpsAgent spreads are ignored.
+ */
+const osmClient = axios_1.default.create({
+    timeout: 12000,
+    httpAgent: new http_1.default.Agent({ family: 4 }),
+    httpsAgent: new https_1.default.Agent({ family: 4 }),
+    headers: {
+        "User-Agent": USER_AGENT,
+        "Accept-Encoding": "gzip, compress, deflate, br",
+    },
+});
 /* ────────────────────────────────────────────────────────────────────────────
  * UTILITIES
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -49,9 +65,11 @@ function dedupe(arr) {
         return true;
     });
 }
-// Simple cache
-const cache = new Map();
-// Rate limiter (Nominatim)
+// Simple caches
+const nearbyCache = new Map();
+const searchCache = new Map();
+const geocodeCache = new Map();
+// Rate limiter (Nominatim: max 1 req/sec)
 let lastRequest = 0;
 async function rateLimit(fn) {
     const diff = Date.now() - lastRequest;
@@ -73,9 +91,10 @@ async function fetchOverpass(lat, lng, radius) {
     );
     out center;
   `;
+    console.log(`[OSM]: Fetching Overpass for ${lat},${lng} radius ${radius}`);
     for (const url of OVERPASS_INSTANCES) {
         try {
-            const { data } = await axios_1.default.post(url, `data=${encodeURIComponent(query)}`, {
+            const { data } = await osmClient.post(url, `data=${encodeURIComponent(query)}`, {
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 timeout: 15000,
             });
@@ -115,41 +134,70 @@ async function fetchOverpass(lat, lng, radius) {
 /* ────────────────────────────────────────────────────────────────────────────
  * NOMINATIM (FALLBACK)
  * ──────────────────────────────────────────────────────────────────────────── */
-async function searchPharmaciesByName(query) {
-    const params = new URLSearchParams({
-        q: query.toLowerCase().includes("pharmacy")
-            ? `${query} Nigeria`
-            : `${query} pharmacy Nigeria`,
-        format: "jsonv2",
-        addressdetails: "1",
-        limit: "20",
-        countrycodes: "ng",
-    });
-    const { data } = await rateLimit(() => axios_1.default.get(`${NOMINATIM_URL}/search?${params}`, {
-        headers: { "User-Agent": USER_AGENT },
-        timeout: 10000,
-    }));
-    return data.map((r) => ({
-        osmId: String(r.osm_id),
-        osmType: r.osm_type,
-        name: r.name || r.display_name.split(",")[0],
-        address: r.display_name,
-        state: r.address?.state || "Nigeria",
-        lga: r.address?.county || null,
-        lat: parseFloat(r.lat),
-        lng: parseFloat(r.lon),
-        phone: null,
-        website: null,
-        openingHours: null,
-    }));
+async function searchPharmaciesByName(query, state) {
+    const cacheKey = `${query}-${state}`.toLowerCase().trim();
+    if (searchCache.has(cacheKey)) {
+        return searchCache.get(cacheKey);
+    }
+    // Variations of queries to try
+    const queries = [
+        query.toLowerCase().includes("pharmacy") ? query : `${query} pharmacy`,
+        `pharmacies in ${query}`,
+    ];
+    if (state && !query.toLowerCase().includes(state.toLowerCase())) {
+        queries.unshift(`${query} ${state}`);
+    }
+    for (let i = 0; i < queries.length; i++) {
+        const qStr = queries[i];
+        // Nominatim requirement: 1 request per second
+        if (i > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+        const params = new URLSearchParams({
+            q: qStr,
+            format: "jsonv2",
+            addressdetails: "1",
+            limit: "20",
+            countrycodes: "ng",
+        });
+        console.log(`[OSM]: Searching Nominatim: ${qStr}`);
+        try {
+            const { data } = await rateLimit(() => osmClient.get(`${NOMINATIM_URL}/search?${params}`));
+            if (Array.isArray(data) && data.length > 0) {
+                const results = data.map((r) => ({
+                    osmId: String(r.osm_id),
+                    osmType: r.osm_type,
+                    name: r.name || r.display_name.split(",")[0] || "Pharmacy",
+                    address: r.display_name,
+                    state: r.address?.state || "Nigeria",
+                    lga: r.address?.county || r.address?.suburb || null,
+                    lat: parseFloat(r.lat),
+                    lng: parseFloat(r.lon),
+                    phone: null,
+                    website: null,
+                    openingHours: null,
+                }));
+                searchCache.set(cacheKey, results);
+                return results;
+            }
+        }
+        catch (err) {
+            if (err.response?.status === 429) {
+                console.error("[OSM SERVICE]: Nominatim rate limit hit (429). Stopping retries.");
+                break;
+            }
+            console.error(`[OSM SERVICE]: searchPharmaciesByName error for query "${qStr}":`, err);
+        }
+    }
+    return [];
 }
 /* ────────────────────────────────────────────────────────────────────────────
  * MAIN: HYBRID SEARCH + DISTANCE SORT
  * ──────────────────────────────────────────────────────────────────────────── */
 async function findNearestPharmacies({ lat, lng, radiusMeters = 5000, limit = 20, fallbackQuery, }) {
     const cacheKey = `${lat}-${lng}-${radiusMeters}-${limit}`;
-    if (cache.has(cacheKey)) {
-        return cache.get(cacheKey);
+    if (nearbyCache.has(cacheKey)) {
+        return nearbyCache.get(cacheKey);
     }
     // 1. Try Overpass first
     let results = await fetchOverpass(lat, lng, radiusMeters);
@@ -165,10 +213,10 @@ async function findNearestPharmacies({ lat, lng, radiusMeters = 5000, limit = 20
         distanceKm: getDistanceKm(lat, lng, p.lat, p.lng),
     }));
     // 5. Sort by nearest
-    results.sort((a, b) => (a.distanceKm - b.distanceKm));
+    results.sort((a, b) => a.distanceKm - b.distanceKm);
     // 6. Limit
     const finalResults = results.slice(0, limit);
-    cache.set(cacheKey, finalResults);
+    nearbyCache.set(cacheKey, finalResults);
     return finalResults;
 }
 /**
@@ -188,24 +236,44 @@ async function geocodeLocation(query) {
         limit: "1",
         countrycodes: "ng",
     });
+    const cacheKey = query.toLowerCase().trim();
+    if (geocodeCache.has(cacheKey)) {
+        return geocodeCache.get(cacheKey) || null;
+    }
     try {
-        const { data } = await rateLimit(() => axios_1.default.get(`${NOMINATIM_URL}/search?${params}`, {
-            headers: { "User-Agent": USER_AGENT },
-            timeout: 10000,
-        }));
+        const { data } = await rateLimit(() => osmClient.get(`${NOMINATIM_URL}/search?${params}`));
         if (!data.length)
             return null;
         const r = data[0];
-        return {
+        const result = {
             lat: parseFloat(r.lat),
             lng: parseFloat(r.lon),
             address: r.display_name,
             state: r.address?.state || "Nigeria",
             lga: r.address?.county || r.address?.suburb || null,
         };
+        geocodeCache.set(cacheKey, result);
+        return result;
     }
     catch (err) {
         console.error("[GEOCODE ERROR]:", err);
+        return geocodeCache.get(cacheKey) || null;
+    }
+}
+/**
+ * AI-powered search intent analysis
+ */
+async function getSearchIntentFromAi(query, state) {
+    const aiUrl = process.env.AI_SERVICE_URL || "http://localhost:8000";
+    try {
+        const { data } = await axios_1.default.post(`${aiUrl}/internal/pharmacy/search-intent`, {
+            query,
+            state
+        }, { timeout: 8000 });
+        return data;
+    }
+    catch (err) {
+        console.error("[AI SEARCH INTENT ERROR]:", err);
         return null;
     }
 }

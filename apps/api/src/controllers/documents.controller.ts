@@ -5,7 +5,7 @@ import { supabase } from "../config/supabase";
 import { documentAnalysisQueue } from "../lib/queue";
 import { z } from "zod";
 
-const BUCKET_NAME = "medical-documents";
+const BUCKET_NAME = process.env.SUPABASE_STORAGE_BUCKET || "medical-documents";
 
 const createDocumentSchema = z.object({
   fileName: z.string().min(1),
@@ -147,10 +147,47 @@ export const deleteDocument = async (req: Request, res: Response) => {
     }
 
     await db.delete(medicalDocuments).where(eq(medicalDocuments.id, id));
-
+ 
     res.status(204).send();
   } catch (err) {
     console.error("[DELETE DOCUMENT ERROR]:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+ 
+export const reAnalyzeDocument = async (req: Request, res: Response) => {
+  const userId = req.headers["x-user-id"] as string;
+  const { id } = req.params;
+ 
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+ 
+  try {
+    const [doc] = await db
+      .select()
+      .from(medicalDocuments)
+      .where(eq(medicalDocuments.id, id))
+      .limit(1);
+ 
+    if (!doc || doc.userId !== userId) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+ 
+    // Add back to analysis queue
+    await documentAnalysisQueue.add("analyze-document", {
+      documentId: doc.id,
+      fileUrl: doc.fileUrl,
+      docType: doc.type,
+    });
+ 
+    // Update status to pending
+    await db
+      .update(medicalDocuments)
+      .set({ status: "pending" })
+      .where(eq(medicalDocuments.id, id));
+ 
+    res.status(200).json({ message: "Analysis re-triggered", status: "pending" });
+  } catch (err) {
+    console.error("[RE-ANALYZE DOCUMENT ERROR]:", err);
+    res.status(500).json({ error: "Failed to re-trigger analysis", message: err instanceof Error ? err.message : String(err) });
   }
 };

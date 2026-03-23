@@ -1,0 +1,15 @@
+
+> @medbridge/api@0.1.0 dev /home/jamesuchechi/Projects/MedBridge/apps/api
+> ts-node-dev --respawn --transpile-only src/index.ts
+
+[INFO] 12:06:21 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.3)
+[ENV]: Environment variables loaded from root .env
+[API]: Server is running at http://localhost:4000
+[0mGET /api/v1/pharmacies/search?q=Bwari%20Abuja&state=FCT&radius=10000 [32m200[0m 49612.791 ms - 48[0m
+[INFO] 12:07:54 Restarting: /home/jamesuchechi/Projects/MedBridge/apps/api/src/services/osm.service.ts has been modified
+[ENV]: Environment variables loaded from root .env
+[ERROR] 12:07:58 Error: listen EADDRINUSE: address already in use :::4000
+[INFO] 12:08:02 Restarting: /home/jamesuchechi/Projects/MedBridge/apps/api/src/controllers/pharmacies.controller.ts has been modified
+/home/jamesuchechi/Projects/MedBridge/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @medbridge/api@0.1.0 dev: `ts-node-dev --respawn --transpile-only src/index.ts`
+Command failed with signal "SIGTERM"

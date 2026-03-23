@@ -56,6 +56,7 @@ const symptoms_1 = __importDefault(require("./routes/symptoms"));
 const documents_1 = __importDefault(require("./routes/documents"));
 const pharmacies_1 = __importDefault(require("./routes/pharmacies"));
 const drugs_1 = __importDefault(require("./routes/drugs"));
+const analysis_worker_1 = require("./workers/analysis.worker");
 const app = (0, express_1.default)();
 const port = process.env.PORT || 4000;
 // ─── Middleware ──────────────────────────────────────────────────────────────
@@ -138,5 +139,6 @@ const httpServer = http_1.default.createServer(app);
 (0, socket_1.initSocket)(httpServer);
 httpServer.listen(port, () => {
     console.log(`[API]: Server is running at http://localhost:${port}`);
+    console.log(`[API]: Worker "${analysis_worker_1.analysisWorker.name}" is listening for jobs.`);
 });
 exports.default = app;

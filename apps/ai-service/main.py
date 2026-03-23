@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from routers import symptom, document, drug
+from routers import symptom, document, drug, pharmacy
 
 app = FastAPI(title="MedBridge AI Service")
 
@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(symptom.router, prefix="/internal/symptom", tags=["symptom"])
 app.include_router(document.router, prefix="/internal/document", tags=["document"])
 app.include_router(drug.router, prefix="/internal/drugs", tags=["drug"])
+app.include_router(pharmacy.router, prefix="/internal/pharmacy", tags=["pharmacy"])
 
 @app.get("/health")
 async def health_check():

@@ -188,23 +188,24 @@ const CSS = `
 .di-disclaimer-box svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; opacity: .6; }
 
 /* AI Modal */
-.di-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; animation: di-fade-in .2s ease; }
+.di-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(12px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; animation: di-fade-in .25s ease; }
 @keyframes di-fade-in { from { opacity: 0; } to { opacity: 1; } }
-.di-modal { width: 100%; max-width: 540px; background: #0c0e12; border: 1px solid rgba(255,255,255,.1); border-radius: 24px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,.5); }
-.di-modal-close { position: absolute; top: 20px; right: 20px; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.06); border: none; color: var(--text2); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; }
-.di-modal-close:hover { background: rgba(255,255,255,.12); color: var(--text); }
+.di-modal { width: 100%; max-width: 540px; background: var(--bg2); border: 1px solid var(--border); border-radius: 24px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: var(--shadow-card, 0 30px 60px rgba(0,0,0,.5)); }
+.di-modal-close { position: absolute; top: 20px; right: 20px; width: 34px; height: 34px; border-radius: 50%; background: var(--glass); border: 1px solid var(--border); color: var(--text2); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; transition: all .2s; }
+.di-modal-close svg { width: 16px; height: 16px; }
+.di-modal-close:hover { background: var(--glass-h); color: var(--text); transform: rotate(90deg); }
 .di-ai-header { padding: 32px 32px 20px; }
 .di-ai-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; margin-bottom: 8px; }
 .di-ai-title span { background: linear-gradient(135deg, var(--accent2), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .di-ai-body { padding: 0 32px 40px; }
-.di-ai-box { background: rgba(61,155,255,.05); border: 1px solid rgba(61,155,255,.12); border-radius: 16px; padding: 20px; margin-bottom: 24px; line-height: 1.6; font-size: 14px; color: var(--text); }
+.di-ai-box { background: var(--glass); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 24px; line-height: 1.6; font-size: 14px; color: var(--text); }
 .di-explain-keypoint { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; font-size: 13.5px; color: var(--text2); }
 .di-explain-keypoint svg { width: 14px; height: 14px; color: var(--accent); flex-shrink: 0; margin-top: 3px; }
-.di-explain-warning { display: flex; gap: 12px; padding: 14px 18px; background: rgba(255,59,59,.08); border: 1px solid rgba(255,59,59,.2); border-radius: 12px; color: #ff5c5c; font-size: 13px; font-weight: 500; margin-bottom: 24px; }
+.di-explain-warning { display: flex; gap: 12px; padding: 14px 18px; background: rgba(255,59,59,.08); border: 1px solid rgba(255,59,59,.2); border-radius: 12px; color: var(--danger); font-size: 13px; font-weight: 500; margin-bottom: 24px; }
 .di-explain-warning svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
-.di-ai-btn { width: 100%; padding: 14px; background: rgba(0,229,160,.1); border: 1px solid rgba(0,229,160,.2); color: var(--accent); border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all .2s; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.di-ai-btn { width: 100%; padding: 14px; background: var(--nav-active-bg); border: 1px solid var(--border); color: var(--accent); border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all .2s; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .di-ai-btn svg { width: 16px; height: 16px; }
-.di-ai-btn:hover { background: rgba(0,229,160,.18); transform: translateY(-2px); }
+.di-ai-btn:hover { background: var(--glass-h); transform: translateY(-2px); border-color: var(--accent); }
 .di-back-btn svg { width: 16px; height: 16px; }
 
 

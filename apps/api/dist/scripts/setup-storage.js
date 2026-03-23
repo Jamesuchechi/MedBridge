@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+require("dotenv/config");
 const supabase_1 = require("../config/supabase");
 async function setup() {
     console.log("Setting up Supabase Storage...");

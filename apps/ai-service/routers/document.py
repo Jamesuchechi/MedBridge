@@ -3,11 +3,49 @@ from pydantic import BaseModel
 from typing import List, Optional
 import os
 import json
-from openai import OpenAI
+import subprocess
+import requests
+import base64
+import tempfile
+import glob
 
-from core.llm import get_llm_client, call_llm_with_fallback
+from core.llm import call_llm_with_fallback
 
 router = APIRouter()
+
+def pdf_to_base64_images(pdf_url: str) -> List[str]:
+    """
+    Downloads a PDF and converts its first page to a base64 encoded PNG.
+    Using pdftoppm (part of poppler-utils) which is available on the system.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pdf_path = os.path.join(tmpdir, "doc.pdf")
+        
+        # 1. Download PDF
+        response = requests.get(pdf_url)
+        if response.status_code != 200:
+            raise Exception(f"Failed to download PDF: {response.status_code}")
+        
+        with open(pdf_path, "wb") as f:
+            f.write(response.content)
+            
+        # 2. Convert to images (first page only for now to keep it fast)
+        # pdftoppm -png -f 1 -l 1 [pdf] [prefix]
+        prefix = os.path.join(tmpdir, "page")
+        try:
+            subprocess.run(["pdftoppm", "-png", "-f", "1", "-l", "1", pdf_path, prefix], check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"pdftoppm failed: {e}")
+        
+        # 3. Read the generated image
+        image_files = sorted(glob.glob(f"{prefix}-*.png"))
+        if not image_files:
+            raise Exception("No images generated from PDF")
+            
+        with open(image_files[0], "rb") as f:
+            base64_image = base64.b64encode(f.read()).decode("utf-8")
+            
+        return [f"data:image/png;base64,{base64_image}"]
 
 class AnalysisRequest(BaseModel):
     fileUrl: str
@@ -43,13 +81,42 @@ class AnalysisResponse(BaseModel):
 
 BASE_PROMPT = """
 You are a medical document analysis AI. Your task is to extract structured information from medical documents.
-Analyze the provided image and return a JSON object matching the requested structure.
+Analyze the provided image and return a JSON object matching this EXACT structure:
+
+{
+  "docType": "lab_result | prescription | radiology | report",
+  "title": "Document title",
+  "issuedBy": "Doctor or Hospital name",
+  "issuedDate": "YYYY-MM-DD",
+  "patientName": "Full name",
+  "summary": "Brief medical summary",
+  "findings": [
+    {
+      "id": "finding_1",
+      "name": "Test or Drug name",
+      "value": "Result or Dosage",
+      "unit": "Unit (if any)",
+      "referenceRange": "Normal range (if any)",
+      "flag": "normal | borderline | abnormal | critical",
+      "interpretation": "Brief explanation"
+    }
+  ],
+  "riskFlags": [
+    {
+      "id": "risk_1",
+      "level": "info | warn | critical",
+      "title": "Short title",
+      "detail": "Full explanation of the risk"
+    }
+  ],
+  "plainEnglish": "A simple explanation for the patient",
+  "recommendations": ["Actionable step 1", "Actionable step 2"]
+}
+
 Be precise. If a value is missing, use "N/A" or empty lists.
-Generate a 'plainEnglish' explanation that is easy for a patient to understand.
-Provide actionable 'recommendations' based on the findings.
-Include 'riskFlags' for any critical or warning-level issues.
-The output MUST be a valid JSON object.
+The output MUST be a valid JSON object matching the schema above.
 """
+
 
 PROMPTS = {
     "lab_result": BASE_PROMPT + """
@@ -84,6 +151,32 @@ async def analyze_document(req: AnalysisRequest):
     # Select prompt based on docType
     system_prompt = PROMPTS.get(req.docType, BASE_PROMPT)
 
+    content_list = [
+        {"type": "text", "text": f"Analyze this {req.docType} document and extract all relevant information into the specified JSON format."}
+    ]
+
+    # Handle PDF vs Image
+    if req.fileUrl.lower().endswith(".pdf"):
+        try:
+            print(f"INFO: Converting PDF to image: {req.fileUrl}")
+            base64_images = pdf_to_base64_images(req.fileUrl)
+            for img_data in base64_images:
+                content_list.append({
+                    "type": "image_url",
+                    "image_url": {"url": img_data}
+                })
+        except Exception as e:
+            print(f"WARN: PDF conversion failed: {e}. Falling back to sending URL directly.")
+            content_list.append({
+                "type": "image_url",
+                "image_url": {"url": req.fileUrl}
+            })
+    else:
+        content_list.append({
+            "type": "image_url",
+            "image_url": {"url": req.fileUrl}
+        })
+
     messages = [
         {
             "role": "system",
@@ -91,15 +184,7 @@ async def analyze_document(req: AnalysisRequest):
         },
         {
             "role": "user",
-            "content": [
-                {"type": "text", "text": f"Analyze this {req.docType} document and extract all relevant information into the specified JSON format."},
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": req.fileUrl,
-                    },
-                },
-            ],
+            "content": content_list,
         }
     ]
 
@@ -108,7 +193,8 @@ async def analyze_document(req: AnalysisRequest):
             messages=messages,
             require_vision=True,
             response_format={"type": "json_object"},
-            max_tokens=2000
+            max_tokens=10000
+
         )
 
         if not content:

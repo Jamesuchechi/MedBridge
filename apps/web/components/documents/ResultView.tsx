@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { MedDocument, FlagLevel } from "@/types/documents";
-import { I } from "@/components/ui/icons";
+import { Icons } from "@/components/ui/Icons";
 import { useAuthStore } from "@/store/auth.store";
 import { getSocket } from "@/lib/socket";
+import { api } from "@/lib/api";
 
 const FLAG_META: Record<FlagLevel, { label: string; color: string; bg: string; border: string }> = {
   normal: { label: "Normal", color: "#00e5a0", bg: "rgba(0,229,160,.1)", border: "rgba(0,229,160,.2)" },
@@ -42,6 +43,19 @@ export function ResultView({ doc, onBack }: { doc: MedDocument; onBack: () => vo
     }
   }, [user?.id, doc.id]);
 
+  const handleRetry = async () => {
+    if (!user) return;
+    try {
+      setCurrentDoc(prev => ({ ...prev, status: "pending" }));
+      await api.post(`/api/v1/documents/${doc.id}/analyze`, {}, {
+        headers: { "x-user-id": user.id }
+      });
+    } catch (err) {
+      console.error("Failed to retry analysis", err);
+      setCurrentDoc(prev => ({ ...prev, status: "failed" }));
+    }
+  };
+
   const r = currentDoc.result;
   const isImage = currentDoc.fileUrl.match(/\.(jpg|jpeg|png|webp)($|\?)/i);
   const isPDF = currentDoc.fileUrl.match(/\.pdf($|\?)/i);
@@ -58,21 +72,35 @@ export function ResultView({ doc, onBack }: { doc: MedDocument; onBack: () => vo
         ) : currentDoc.status === "failed" ? (
           <>
             <div className="w-12 h-12 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-6 text-2xl">
-              <I.X />
+              <Icons.X />
             </div>
             <h2 className="text-xl font-bold mb-2">Analysis Failed</h2>
             <p className="text-muted-foreground mb-6">We couldn't process this document. Please try again with a clearer image.</p>
-            <button onClick={onBack} className="bg-muted px-6 py-2 rounded-xl font-bold hover:bg-muted/80">
-              Go Back
-            </button>
+            <div className="flex gap-4">
+              <button 
+                onClick={handleRetry} 
+                className="bg-accent text-accent-foreground px-6 py-2 rounded-xl font-bold hover:scale-105 transition-all"
+              >
+                Retry Analysis
+              </button>
+              <button onClick={onBack} className="bg-muted px-6 py-2 rounded-xl font-bold hover:bg-muted/80">
+                Go Back
+              </button>
+            </div>
           </>
         ) : (
           <>
             <div className="w-12 h-12 bg-muted text-muted-foreground rounded-full flex items-center justify-center mb-6">
-              <I.Clk />
+              <Icons.Clock />
             </div>
             <h2 className="text-xl font-bold mb-2">Pending Analysis</h2>
-            <p className="text-muted-foreground">This document is in the queue for processing.</p>
+            <p className="text-muted-foreground mb-6">This document is in the queue for processing.</p>
+            <button 
+              onClick={handleRetry} 
+              className="bg-accent text-accent-foreground px-6 py-2 rounded-xl font-bold hover:scale-105 transition-all"
+            >
+              Analyze Now
+            </button>
           </>
         )}
       </div>
@@ -87,11 +115,11 @@ export function ResultView({ doc, onBack }: { doc: MedDocument; onBack: () => vo
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="text-muted-foreground hover:text-accent flex items-center gap-2 font-bold transition-colors">
-          <I.ChL /> Back to List
+          <Icons.ChevronLeft /> Back to List
         </button>
         <div className="flex gap-2">
            <a href={currentDoc.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 bg-muted rounded-xl text-xs font-bold hover:bg-muted/80">
-             <I.Eye /> Open Original
+             <Icons.Eye /> Open Original
            </a>
         </div>
       </div>
@@ -101,7 +129,7 @@ export function ResultView({ doc, onBack }: { doc: MedDocument; onBack: () => vo
           {/* Summary */}
           <section className="p-6 bg-gradient-to-br from-accent/10 to-accent2/10 border border-accent/20 rounded-3xl">
             <h3 className="text-xs font-mono font-bold text-accent mb-2 uppercase tracking-widest flex items-center gap-2">
-              <I.Zp /> AI Summary
+              <Icons.Zap className="w-4 h-4" /> AI Summary
             </h3>
             <p className="text-lg font-medium leading-relaxed">{r.summary}</p>
           </section>
@@ -116,7 +144,7 @@ export function ResultView({ doc, onBack }: { doc: MedDocument; onBack: () => vo
                   return (
                     <div key={rf.id} className="p-4 rounded-2xl border flex gap-4" style={{ backgroundColor: rm.bg, borderColor: rm.border }}>
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${rm.color}20`, color: rm.color }}>
-                        {rf.level === "critical" ? <I.Atr /> : <I.Inf />}
+                        {rf.level === "critical" ? <Icons.AlertTriangle /> : <Icons.Info />}
                       </div>
                       <div>
                         <h4 className="font-bold text-foreground">{rf.title}</h4>
@@ -188,7 +216,7 @@ export function ResultView({ doc, onBack }: { doc: MedDocument; onBack: () => vo
           {/* Plain English */}
           <section className="p-6 bg-muted/30 border border-border rounded-3xl">
             <h3 className="text-xs font-mono font-bold text-accent2 mb-4 uppercase tracking-widest flex items-center gap-2">
-              <I.Spk /> What this means for you
+              <Icons.Sparkles /> What this means for you
             </h3>
             <p className="text-md leading-relaxed text-foreground/90">{r.plainEnglish}</p>
           </section>
@@ -274,7 +302,7 @@ export function ResultView({ doc, onBack }: { doc: MedDocument; onBack: () => vo
           )}
 
           <div className="p-4 bg-accent2/5 border border-accent2/10 rounded-2xl flex gap-3 items-start">
-            <I.Inf />
+            <Icons.Info />
             <p className="text-[10px] leading-relaxed text-muted-foreground">
               This AI analysis is for informational purposes only and is not a medical diagnosis. Always consult a qualified physician.
             </p>

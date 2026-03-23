@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteDocument = exports.getDocumentById = exports.getDocuments = exports.createDocument = exports.getUploadUrl = void 0;
+exports.reAnalyzeDocument = exports.deleteDocument = exports.getDocumentById = exports.getDocuments = exports.createDocument = exports.getUploadUrl = void 0;
 const db_1 = require("@medbridge/db");
 const drizzle_orm_1 = require("drizzle-orm");
 const supabase_1 = require("../config/supabase");
 const queue_1 = require("../lib/queue");
 const zod_1 = require("zod");
-const BUCKET_NAME = "medical-documents";
+const BUCKET_NAME = process.env.SUPABASE_STORAGE_BUCKET || "medical-documents";
 const createDocumentSchema = zod_1.z.object({
     fileName: zod_1.z.string().min(1),
     fileType: zod_1.z.string().min(1),
@@ -144,3 +144,36 @@ const deleteDocument = async (req, res) => {
     }
 };
 exports.deleteDocument = deleteDocument;
+const reAnalyzeDocument = async (req, res) => {
+    const userId = req.headers["x-user-id"];
+    const { id } = req.params;
+    if (!userId)
+        return res.status(401).json({ error: "Unauthorized" });
+    try {
+        const [doc] = await db_1.db
+            .select()
+            .from(db_1.medicalDocuments)
+            .where((0, drizzle_orm_1.eq)(db_1.medicalDocuments.id, id))
+            .limit(1);
+        if (!doc || doc.userId !== userId) {
+            return res.status(404).json({ error: "Document not found" });
+        }
+        // Add back to analysis queue
+        await queue_1.documentAnalysisQueue.add("analyze-document", {
+            documentId: doc.id,
+            fileUrl: doc.fileUrl,
+            docType: doc.type,
+        });
+        // Update status to pending
+        await db_1.db
+            .update(db_1.medicalDocuments)
+            .set({ status: "pending" })
+            .where((0, drizzle_orm_1.eq)(db_1.medicalDocuments.id, id));
+        res.status(200).json({ message: "Analysis re-triggered", status: "pending" });
+    }
+    catch (err) {
+        console.error("[RE-ANALYZE DOCUMENT ERROR]:", err);
+        res.status(500).json({ error: "Failed to re-trigger analysis", message: err instanceof Error ? err.message : String(err) });
+    }
+};
+exports.reAnalyzeDocument = reAnalyzeDocument;

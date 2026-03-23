@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, uuid, pgEnum, date, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, uuid, pgEnum, date, integer, doublePrecision } from "drizzle-orm/pg-core";
 
 export const roleEnum = pgEnum("role", [
   "PATIENT",
@@ -121,8 +121,8 @@ export const pharmacies = pgTable("pharmacies", {
   lga: text("lga"),
   phone: text("phone"),
   email: text("email"),
-  lat: integer("lat"), // Storing as integer (e.g. multiplied by 10^7) or double precision
-  lng: integer("lng"),
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
   osmId: text("osm_id").unique(),
   osmType: text("osm_type"), // 'node' | 'way' | 'relation'
   openingHours: text("opening_hours"),

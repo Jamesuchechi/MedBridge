@@ -1,7 +1,7 @@
 "use client";
 
 import { MedDocument, DocStatus, FlagLevel } from "@/types/documents";
-import { I } from "@/components/ui/icons";
+import { Icons } from "@/components/ui/Icons";
 
 const DOC_META: Record<string, { label: string; icon: string; color: string }> = {
   lab_result: { label: "Lab result", color: "#00e5a0", icon: "🧪" },
@@ -41,7 +41,7 @@ export function DocumentList({
     return (
       <div className="da-empty text-center py-20 bg-muted/20 border border-dashed border-border rounded-3xl">
         <div className="da-ei w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
-          <I.Ft />
+          <Icons.FileText />
         </div>
         <div className="font-bold text-foreground mb-1">No documents yet</div>
         <div className="text-sm text-muted-foreground">Upload your first medical document to get started</div>
@@ -109,7 +109,7 @@ export function DocumentList({
             )}
 
             <div className="da-drc text-muted-foreground/30 group-hover:text-accent transition-colors">
-              <I.ChR />
+              <Icons.ChevronRight />
             </div>
           </div>
         );
