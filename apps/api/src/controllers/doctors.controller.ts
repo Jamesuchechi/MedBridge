@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { db, users, doctorProfiles, doctorVerificationAudit } from "@medbridge/db";
+import { db, users, doctorProfiles, doctorVerificationAudit, clinicalCases } from "@medbridge/db";
 import { eq, and, desc, sql, ilike, or } from "drizzle-orm";
 import { z } from "zod";
 import { validateMdcnFormat, checkMdcnDuplicate } from "../services/mdcn.service";
@@ -61,6 +61,7 @@ const registerSchema = z.object({
   bio:               z.string().max(1000).optional(),
   languages:         z.array(z.string()).min(1).default(["English"]),
   consultationTypes: z.array(z.enum(["In-person", "Telemedicine", "Both"])).min(1).default(["In-person"]),
+  coverUrl:          z.string().url().optional(),
 });
 
 const adminActionSchema = z.object({
@@ -236,15 +237,24 @@ export const updateDoctorProfile = async (req: Request, res: Response) => {
     // Pre-approval doctors can update anything
     const isApproved = profile.verificationStatus === "approved";
     const allowedFields = isApproved
-      ? ["bio", "phone", "consultationTypes", "currentHospital", "hospitalState", "hospitalLga"]
+      ? ["bio", "phone", "consultationTypes", "currentHospital", "hospitalState", "hospitalLga", "coverUrl"]
       : Object.keys(req.body);
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
+        if (field === "avatarUrl") {
+          // Update users table for avatarUrl
+          await db.update(users).set({ avatarUrl: req.body[field] as string, updatedAt: new Date() }).where(eq(users.id, userId));
+          continue;
+        }
         updateData[field] = Array.isArray(req.body[field])
-          ? JSON.stringify(req.body[field])
+          ? JSON.parse(JSON.stringify(req.body[field])) // Ensure it's not a reference if coming from body
           : req.body[field];
+        
+        if (Array.isArray(req.body[field])) {
+           updateData[field] = JSON.stringify(req.body[field]);
+        }
       }
     }
 
@@ -474,6 +484,49 @@ export const moderateDoctor = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("[MODERATE DOCTOR]:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+/** GET /api/v1/doctors/stats */
+export const getDoctorStats = async (req: Request, res: Response) => {
+  const userId = req.headers["x-user-id"] as string;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    // 1. Total Consultations (All time)
+    const [totalRow] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(clinicalCases)
+      .where(eq(clinicalCases.doctorId, userId));
+
+    // 2. Today's Consultations
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [todayRow] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(clinicalCases)
+      .where(and(eq(clinicalCases.doctorId, userId), sql`created_at >= ${today}`));
+
+    // 3. Pending Reviews (Mocked for now or count of specific cases)
+    const pendingReviews = 0; // Future improvement: track reviews
+
+    // 4. Active Cases (Consultations in last 7 days)
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const [activeRow] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(clinicalCases)
+      .where(and(eq(clinicalCases.doctorId, userId), sql`created_at >= ${weekAgo}`));
+
+    res.json({
+      totalConsultations: Number(totalRow.count),
+      todayConsultations: Number(todayRow.count),
+      pendingReviews,
+      activeCases: Number(activeRow.count),
+      referralsSent: 0, // Mocked until referrals are implemented
+    });
+  } catch (err) {
+    console.error("[GET DOCTOR STATS ERROR]:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };

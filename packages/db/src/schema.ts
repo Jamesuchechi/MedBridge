@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   isVerified: boolean("is_verified").default(false).notNull(),
   mdcnVerified: boolean("mdcn_verified").default(false),
   clinicId: uuid("clinic_id"),
+  avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -207,6 +208,7 @@ export const doctorProfiles = pgTable("doctor_profiles", {
   verifiedBy: uuid("verified_by").references(() => users.id),
   verifiedAt: timestamp("verified_at"),
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+  coverUrl: text("cover_url"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

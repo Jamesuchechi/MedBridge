@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -30,6 +31,8 @@ interface ProfileData {
   hospitalState: string;
   hospitalLga: string;
   bio: string;
+  avatarUrl: string;
+  coverUrl: string;
 }
 
 interface Allergy { id: string; substance: string; reaction: string; severity: "mild" | "moderate" | "severe"; }
@@ -56,6 +59,7 @@ interface HealthProfileResponse {
   emergencyName?: string;
   emergencyPhone?: string;
   emergencyRelation?: string;
+  avatarUrl?: string;
 }
 
 interface DoctorProfileResponse {
@@ -69,6 +73,15 @@ interface DoctorProfileResponse {
   hospitalState?: string;
   hospitalLga?: string;
   bio?: string;
+  coverUrl?: string;
+  avatarUrl?: string; // from users join
+}
+
+interface DoctorStats {
+  totalConsultations: number;
+  activeCases: number;
+  referralsSent: number;
+  todayConsultations: number;
 }
 
 
@@ -80,6 +93,7 @@ const EMPTY_PROFILE: ProfileData = {
   emergencyName: "", emergencyPhone: "", emergencyRelation: "",
   fullName: "", mdcnNumber: "", specialization: "", subSpecialization: "",
   yearsExperience: "", currentHospital: "", hospitalState: "", hospitalLga: "", bio: "",
+  avatarUrl: "", coverUrl: "",
 };
 
 const SPECIALIZATIONS = [
@@ -137,6 +151,7 @@ const Ic = {
   Shield: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
   Activity: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
   Sparkles: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>,
+  ShieldCheck: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 11 11 13 15 9"/></svg>,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -238,8 +253,56 @@ body { font-family:'DM Sans',system-ui,sans-serif; background:var(--bg); color:v
 .hp-success { display:flex;flex-direction:column; align-items:center; text-align:center; padding:40px 20px; animation:hp-enter .5s ease; }
 .hp-success-ring { width:88px;height:88px; border-radius:50%; background:rgba(0,229,160,.1); border:2px solid rgba(0,229,160,.25); display:flex;align-items:center;justify-content:center; margin-bottom:24px; color:var(--accent); }
 .hp-success-ring svg { width: 44px; height: 44px; }
-.hp-spinner { width:15px;height:15px; border:2px solid rgba(0,0,0,.2); border-top-color:#000; border-radius:50%; animation:spin .7s linear infinite; }
-@keyframes spin{to{transform:rotate(360deg)}}
+  .hp-spinner { width:15px;height:15px; border:2px solid rgba(0,0,0,.2); border-top-color:#000; border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* IG/X Style Profile Styles */
+  .prof-container { width: 100%; animation: PROF-ENTER 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes PROF-ENTER { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  
+  .prof-header { position: relative; border-radius: 24px; background: var(--bg3); border: 1px solid var(--border); margin-bottom: 80px; }
+  .prof-cover { width: 100%; height: 240px; position: relative; cursor: pointer; group: hover; }
+  .prof-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .prof-cover-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; }
+  .prof-cover:hover .prof-cover-overlay { opacity: 1; }
+  
+  .prof-avatar-wrap { position: absolute; left: 32px; bottom: -60px; width: 140px; height: 140px; border-radius: 50%; border: 6px solid var(--bg); background: var(--bg2); overflow: hidden; cursor: pointer; }
+  @media (max-width: 600px) { .prof-avatar-wrap { left: 50%; transform: translateX(-50%); width: 120px; height: 120px; bottom: -50px; } }
+  .prof-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+  .prof-avatar-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; }
+  .prof-avatar-wrap:hover .prof-avatar-overlay { opacity: 1; }
+
+  .prof-actions { position: absolute; right: 24px; bottom: -50px; display: flex; gap: 12px; }
+  @media (max-width: 600px) { .prof-actions { position: static; margin-top: 60px; justify-content: center; padding: 0 16px; width: 100%; } }
+
+  .prof-info-section { padding: 0 32px; margin-bottom: 40px; }
+  @media (max-width: 600px) { .prof-info-section { text-align: center; } }
+  .prof-name { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+  .prof-specialty { color: var(--accent2); font-weight: 600; font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .prof-specialty svg { width: 18px; height: 18px; flex-shrink: 0; }
+  @media (max-width: 600px) { .prof-specialty { justify-content: center; } }
+  .prof-bio { max-width: 680px; color: var(--text2); line-height: 1.6; font-size: 14px; margin-bottom: 20px; }
+  @media (max-width: 600px) { .prof-bio { margin-left: auto; margin-right: auto; } }
+
+  .prof-meta { display: flex; flex-wrap: wrap; gap: 20px; color: var(--text3); font-size: 13px; margin-bottom: 24px; }
+  @media (max-width: 600px) { .prof-meta { justify-content: center; } }
+  .prof-meta-item { display: flex; align-items: center; gap: 6px; }
+  .prof-meta-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .prof-stats { display: flex; gap: 40px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 20px 0; margin-bottom: 32px; }
+  @media (max-width: 600px) { .prof-stats { justify-content: space-around; gap: 0; } }
+  .prof-stat { text-align: center; }
+  .prof-stat-val { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--text); }
+  .prof-stat-lbl { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+  .prof-tabs { display: flex; gap: 32px; border-bottom: 1px solid var(--border); margin-bottom: 32px; padding: 0 32px; }
+  @media (max-width: 600px) { .prof-tabs { justify-content: center; padding: 0; } }
+  .prof-tab { padding: 12px 0; font-weight: 700; font-size: 14px; color: var(--text3); cursor: pointer; position: relative; transition: 0.2s; }
+  .prof-tab:hover { color: var(--text2); }
+  .prof-tab.active { color: var(--accent2); }
+  .prof-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 3px; background: var(--accent2); border-radius: 10px; }
+
+  .upload-input { display: none; }
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -253,16 +316,23 @@ function calcBMI(weightKh: string, heightCm: string) {
   return { value: bmi.toFixed(1), category };
 }
 
-function calcCompletion(p: ProfileData): number {
+function calcCompletion(p: ProfileData, isDoctor: boolean): number {
   const fields = [p.firstName, p.lastName, p.dob, p.sex, p.phone, p.state, p.bloodType, p.genotype, p.weight, p.height];
   const filled = fields.filter(Boolean).length;
   let bonus = 0;
-  if (p.chronicConditions.length > 0) bonus += 5;
-  if (p.allergies.length > 0) bonus += 5;
-  if (p.medications.length > 0) bonus += 5;
-  if (p.familyHistory.length > 0) bonus += 5;
-  if (p.vaccinations.length > 0) bonus += 5;
-  if (p.medicalHistory.length > 0) bonus += 5;
+  
+  if (isDoctor) {
+    const docFields = [p.fullName, p.specialization, p.mdcnNumber, p.yearsExperience, p.currentHospital, p.bio];
+    const docFilled = docFields.filter(Boolean).length;
+    bonus += Math.round((docFilled / docFields.length) * 20);
+  } else {
+    if (p.chronicConditions.length > 0) bonus += 4;
+    if (p.allergies.length > 0) bonus += 4;
+    if (p.medications.length > 0) bonus += 4;
+    if (p.familyHistory.length > 0) bonus += 4;
+    if (p.vaccinations.length > 0) bonus += 4;
+  }
+  
   if (p.emergencyName && p.emergencyPhone) bonus += 10;
   return Math.min(100, Math.round((filled / fields.length) * 60) + bonus);
 }
@@ -270,16 +340,53 @@ function calcCompletion(p: ProfileData): number {
 // ─────────────────────────────────────────────────────────────────────────────
 // STEP COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
-function StepPersonal({ data, set }: { data: ProfileData; set: (p: Partial<ProfileData>) => void }) {
+function StepPersonal({ data, set, onUpload, uploading }: { data: ProfileData; set: (p: Partial<ProfileData>) => void; onUpload: (f: File, t: 'avatar' | 'cover') => Promise<void>; uploading: string | null }) {
   return (
     <div className="hp-section">
       <div className="hp-section-header">
         <div className="hp-section-icon" style={{ background: "rgba(0,229,160,.12)", color: "var(--accent)" }}><Ic.User /></div>
         <div>
           <div className="hp-section-title">Personal information</div>
-          <div className="hp-section-sub">Basic details used across MedBridge</div>
+          <div className="hp-section-sub">Basic details and profile media</div>
         </div>
       </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '24px', marginBottom: '32px', alignItems: 'center' }}>
+        <div 
+          className="prof-avatar-wrap" 
+          style={{ position: 'relative', bottom: 'auto', left: 'auto', transform: 'none', margin: 0, width: 100, height: 100 }}
+          onClick={() => document.getElementById('avatar-upload-edit')?.click()}
+        >
+          {data.avatarUrl ? <Image src={data.avatarUrl} alt="Avatar" width={100} height={100} style={{ objectFit: 'cover' }} /> : <div style={{width:'100%',height:'100%',background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'32px',fontWeight:800}}>{data.firstName?.[0] || 'U'}</div>}
+          <div className="prof-avatar-overlay">
+            {uploading === 'avatar' ? <div className="hp-spinner" /> : <Ic.Plus />}
+          </div>
+          <input id="avatar-upload-edit" type="file" className="upload-input" accept="image/*" onChange={e => {
+            const file = e.target.files?.[0];
+            if (file) onUpload(file, 'avatar');
+          }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div className="hp-label" style={{ marginBottom: 8 }}>Profile Cover</div>
+          <div 
+            className="prof-header" 
+            style={{ height: 100, margin: 0, cursor: 'pointer' }}
+            onClick={() => document.getElementById('cover-upload-edit')?.click()}
+          >
+             <div className="prof-cover" style={{ height: '100%' }}>
+                <Image src={data.coverUrl || "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=1200"} alt="Cover" fill style={{ objectFit: 'cover' }} unoptimized={!data.coverUrl} />
+                <div className="prof-cover-overlay">
+                   {uploading === 'cover' ? <div className="hp-spinner" /> : <div style={{display:'flex',alignItems:'center',gap:8}}><Ic.Plus /> <span>Upload Cover</span></div>}
+                </div>
+             </div>
+             <input id="cover-upload-edit" type="file" className="upload-input" accept="image/*" onChange={e => {
+               const file = e.target.files?.[0];
+               if (file) onUpload(file, 'cover');
+             }} />
+          </div>
+        </div>
+      </div>
+
       <div className="hp-grid hp-grid-2" style={{ marginBottom: 16 }}>
         <div className="hp-field"><label className="hp-label">First name</label><input className="hp-input" placeholder="Emeka" value={data.firstName} onChange={e => set({ firstName: e.target.value })} /></div>
         <div className="hp-field"><label className="hp-label">Last name</label><input className="hp-input" placeholder="Okonkwo" value={data.lastName} onChange={e => set({ lastName: e.target.value })} /></div>
@@ -492,6 +599,191 @@ function StepProfessional({ data, set }: { data: ProfileData; set: (p: Partial<P
   );
 }
 
+function ClinicianProfileView({ doctor, stats, onEdit, user, isOwner }: { doctor: ProfileData; stats: DoctorStats; onEdit: () => void; user: User; isOwner: boolean }) {
+  const cover = doctor.coverUrl || "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=1200";
+  const avatar = doctor.avatarUrl || "";
+
+      const [activeTab, setActiveTab] = useState("Overview");
+
+  return (
+    <div className="prof-container">
+      <div className="prof-header">
+        <div className="prof-cover">
+          <Image src={cover} alt="Cover" fill style={{ objectFit: 'cover' }} unoptimized={cover.includes('unsplash.com')} />
+        </div>
+
+        <div className="prof-avatar-wrap">
+          {avatar ? <Image src={avatar} alt="Avatar" width={140} height={140} style={{ objectFit: 'cover' }} /> : <div style={{width:'100%',height:'100%',background:'var(--accent2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'40px',fontWeight:800}}>{doctor.firstName?.[0] || user.user_metadata?.full_name?.[0] || 'D'}</div>}
+        </div>
+
+        {isOwner && (
+          <div className="prof-actions">
+            <button className="hp-btn hp-btn-ghost" onClick={onEdit} style={{borderRadius:'100px',padding:'10px 24px'}}>Edit Profile</button>
+          </div>
+        )}
+      </div>
+
+      <div className="prof-info-section">
+        <h1 className="prof-name">{doctor.fullName || `${doctor.firstName} ${doctor.lastName}`.trim() || user.user_metadata?.full_name}</h1>
+        <div className="prof-specialty">
+          <Ic.ShieldCheck /> {doctor.specialization || "Clinician"}
+        </div>
+        <p className="prof-bio">{doctor.bio || "No professional bio provided yet."}</p>
+        
+        <div className="prof-meta">
+          {doctor.currentHospital && <div className="prof-meta-item"><Ic.MapPin /> {doctor.currentHospital}</div>}
+          <div className="prof-meta-item"><Ic.Activity /> {doctor.yearsExperience || "0"}+ Years Experience</div>
+          <div className="prof-meta-item"><Ic.Info /> Joined {new Date(user.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</div>
+        </div>
+
+        <div className="prof-stats">
+          <div className="prof-stat">
+            <div className="prof-stat-val">{stats.totalConsultations}</div>
+            <div className="prof-stat-lbl">Consultations</div>
+          </div>
+          <div className="prof-stat">
+            <div className="prof-stat-val">{stats.activeCases}</div>
+            <div className="prof-stat-lbl">Active Cases</div>
+          </div>
+          <div className="prof-stat">
+            <div className="prof-stat-val">4.9</div>
+            <div className="prof-stat-lbl">Avg Rating</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="prof-tabs">
+        {["Overview", "Patient Reviews", "Settings"].map(t => (
+          <div key={t} className={`prof-tab ${activeTab === t ? "active" : ""}`} onClick={() => setActiveTab(t)}>{t}</div>
+        ))}
+      </div>
+
+      <div style={{ padding: '0 32px' }}>
+         {activeTab === "Overview" && (
+           <div className="hp-grid hp-grid-2">
+              <div className="hp-section">
+                  <h3 style={{marginBottom:16}}>Practice Details</h3>
+                  <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                     <div style={{fontSize:14}}><span style={{color:'var(--text2)'}}>Registration:</span> {doctor.mdcnNumber || "Not provided"}</div>
+                     <div style={{fontSize:14}}><span style={{color:'var(--text2)'}}>Location:</span> {doctor.hospitalLga && `${doctor.hospitalLga}, `}{doctor.hospitalState || "Not provided"}</div>
+                  </div>
+              </div>
+              <div className="hp-section">
+                  <h3 style={{marginBottom:16}}>Clinical Focus</h3>
+                  <div className="hp-tag-grid">
+                     {doctor.specialization ? <div className="hp-tag selected" style={{"--tag-color":"var(--accent2)"} as React.CSSProperties}>{doctor.specialization}</div> : <div style={{fontSize:13,color:'var(--text3)'}}>Not set</div>}
+                  </div>
+              </div>
+           </div>
+         )}
+         {activeTab === "Patient Reviews" && (
+           <div className="hp-section" style={{textAlign:'center',padding:'60px 20px'}}>
+             <div style={{fontSize:40,marginBottom:16}}>⭐</div>
+             <h3>No reviews yet</h3>
+             <p style={{color:'var(--text3)',maxWidth:400,margin:'12px auto'}}>When you complete consultations with patients, their feedback will appear here.</p>
+           </div>
+         )}
+         {activeTab === "Settings" && (
+           <div className="hp-section">
+             <h3 style={{marginBottom:20}}>Profile Visibility</h3>
+             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px',background:'var(--glass)',borderRadius:12,border:'1px solid var(--border)'}}>
+               <div>
+                 <div style={{fontWeight:600,marginBottom:4}}>Public Profile</div>
+                 <div style={{fontSize:12,color:'var(--text3)'}}>Allow patients to find and book appointments with you</div>
+               </div>
+               <div style={{width:40,height:22,background:'var(--accent)',borderRadius:20,position:'relative'}}>
+                 <div style={{position:'absolute',right:2,top:2,width:18,height:18,background:'#000',borderRadius:'50%'}} />
+               </div>
+             </div>
+           </div>
+         )}
+      </div>
+    </div>
+  );
+}
+
+function PatientProfileView({ data, onEdit, user, isOwner }: { data: ProfileData; onEdit: () => void; user: User; isOwner: boolean }) {
+  const [activeTab, setActiveTab] = useState("Overview");
+  const cover = data.coverUrl || "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=1200";
+  const avatar = data.avatarUrl || "";
+
+  return (
+    <div className="prof-container">
+      <div className="prof-header">
+        <div className="prof-cover">
+          <Image src={cover} alt="Cover" fill style={{ objectFit: 'cover' }} unoptimized={cover.includes('unsplash.com')} />
+        </div>
+
+        <div className="prof-avatar-wrap">
+          {avatar ? <Image src={avatar} alt="Avatar" width={140} height={140} style={{ objectFit: 'cover' }} /> : <div style={{width:'100%',height:'100%',background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'40px',fontWeight:800}}>{data.firstName?.[0] || user.user_metadata?.full_name?.[0] || 'P'}</div>}
+        </div>
+
+        {isOwner && (
+          <div className="prof-actions">
+            <button className="hp-btn hp-btn-ghost" onClick={onEdit} style={{borderRadius:'100px',padding:'10px 24px'}}>Edit Profile</button>
+          </div>
+        )}
+      </div>
+
+      <div className="prof-info-section">
+        <h1 className="prof-name">{`${data.firstName} ${data.lastName}`.trim() || user.user_metadata?.full_name}</h1>
+        <div className="prof-specialty" style={{color:'var(--accent)'}}>
+          <Ic.User /> Patient
+        </div>
+        
+        <div className="prof-meta">
+          {data.state && <div className="prof-meta-item"><Ic.MapPin /> {data.lga && `${data.lga}, `}{data.state}</div>}
+          <div className="prof-meta-item"><Ic.Info /> Joined {new Date(user.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</div>
+        </div>
+      </div>
+
+      <div className="prof-tabs">
+        {["Overview", "Medical History", "Settings"].map(t => (
+          <div key={t} className={`prof-tab ${activeTab === t ? "active" : ""}`} onClick={() => setActiveTab(t)}>{t}</div>
+        ))}
+      </div>
+
+      <div style={{ padding: '0 32px' }}>
+         {activeTab === "Overview" && (
+           <div className="hp-grid hp-grid-2">
+              <div className="hp-section">
+                  <h3 style={{marginBottom:16}}>Clinical Summary</h3>
+                  <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                     <div style={{fontSize:14}}><span style={{color:'var(--text2)'}}>Blood Group:</span> {data.bloodType || "Not set"}</div>
+                     <div style={{fontSize:14}}><span style={{color:'var(--text2)'}}>Genotype:</span> {data.genotype || "Not set"}</div>
+                     <div style={{fontSize:14}}><span style={{color:'var(--text2)'}}>BMI:</span> {calcBMI(data.weight, data.height)?.value || "Not calculated"}</div>
+                  </div>
+              </div>
+              <div className="hp-section">
+                  <h3 style={{marginBottom:16}}>Conditions</h3>
+                  <div className="hp-tag-grid">
+                     {data.chronicConditions.length > 0 ? data.chronicConditions.map(c => (
+                       <div key={c} className="hp-tag selected" style={{"--tag-color":"var(--accent3)"} as React.CSSProperties}>{c}</div>
+                     )) : <div style={{fontSize:13,color:'var(--text3)'}}>No chronic conditions reported</div>}
+                  </div>
+              </div>
+           </div>
+         )}
+         {activeTab === "Medical History" && (
+           <div className="hp-section">
+             <h3 style={{marginBottom:20}}>Detailed History</h3>
+             <div style={{display:'grid',gap:16}}>
+               {data.medicalHistory.length > 0 ? data.medicalHistory.map(h => (
+                 <div key={h} style={{padding:12,background:'var(--glass)',borderRadius:8,border:'1px solid var(--border)',fontSize:14}}>{h}</div>
+               )) : <div style={{color:'var(--text3)',fontSize:14}}>No surgical or clinical history recorded yet.</div>}
+             </div>
+           </div>
+         )}
+         {activeTab === "Settings" && (
+           <div className="hp-section" style={{textAlign:'center',padding:'40px'}}>
+             <p style={{color:'var(--text3)'}}>Security and privacy settings are managed in Account Management.</p>
+           </div>
+         )}
+      </div>
+    </div>
+  );
+}
+
 export default function HealthProfileSetup() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<ProfileData>(EMPTY_PROFILE);
@@ -499,11 +791,60 @@ export default function HealthProfileSetup() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState<DoctorStats>({
+    totalConsultations: 0,
+    activeCases: 0,
+    referralsSent: 0,
+    todayConsultations: 0
+  });
+
+  const set = (p: Partial<ProfileData>) => setData(prev => ({ ...prev, ...p }));
+
+  const [view, setView] = useState<"edit" | "profile">("profile");
+  const [uploading, setUploading] = useState<string | null>(null);
+
+  const handleUpload = async (file: File, type: 'avatar' | 'cover') => {
+    if (!user) return;
+    setUploading(type);
+    try {
+      const res = await fetch(`${API_URL}/api/v1/profile/upload-url?type=${type}&fileName=${file.name}`, {
+        headers: { "x-user-id": user.id }
+      });
+      const { uploadUrl, fileUrl } = await res.json();
+
+      await fetch(uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type }
+      });
+
+      // Update local state immediately
+      setData(prev => ({ ...prev, [type === 'avatar' ? 'avatarUrl' : 'coverUrl']: fileUrl }));
+
+      // Sync with DB
+      if (isDoctor && type === 'cover') {
+         await fetch(`${API_URL}/api/v1/doctors/me`, {
+           method: "PUT",
+           headers: { "Content-Type": "application/json", "x-user-id": user.id, "x-user-role": user.user_metadata?.role },
+           body: JSON.stringify({ coverUrl: fileUrl })
+         });
+      } else {
+         await fetch(`${API_URL}/api/v1/profile`, {
+           method: "POST",
+           headers: { "Content-Type": "application/json", "x-user-id": user.id },
+           body: JSON.stringify({ ...data, [type === 'avatar' ? 'avatarUrl' : 'coverUrl']: fileUrl })
+         });
+      }
+    } catch (err) {
+      console.error("Upload failed", err);
+      alert("Upload failed. Please try again.");
+    } finally {
+      setUploading(null);
+    }
+  };
 
   const supabase = createClient();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-
-  const set = useCallback((patch: Partial<ProfileData>) => setData(prev => ({ ...prev, ...patch })), []);
 
   const isDoctor = user?.user_metadata?.role === "CLINICIAN" || user?.user_metadata?.role === "doctor";
   const filteredSteps = STEPS.filter(s => !s.roleGate || (isDoctor && s.roleGate.some(r => ["CLINICIAN", "doctor"].includes(r))));
@@ -518,52 +859,54 @@ export default function HealthProfileSetup() {
       setUser(user);
 
       try {
-        // 1. Fetch Health Profile
         const res = await fetch(`${API_URL}/api/v1/profile`, {
           headers: { "x-user-id": user.id }
         });
-        let hProfile = {};
+        let hProfile: HealthProfileResponse = {};
         if (res.ok) {
           hProfile = await res.json();
         }
 
-        // 2. Fetch Doctor Profile if applicable
         let dProfile: DoctorProfileResponse = {};
+        const isActuallyDoctor = user.user_metadata?.role === "CLINICIAN" || user.user_metadata?.role === "doctor";
 
-        if (user.user_metadata?.role === "CLINICIAN" || user.user_metadata?.role === "doctor") {
+        if (isActuallyDoctor) {
           try {
             const dRes = await fetch(`${API_URL}/api/v1/doctors/me`, {
               headers: { "x-user-id": user.id, "x-user-role": user.user_metadata?.role }
             });
             if (dRes.ok) dProfile = await dRes.json();
-          } catch (e) { console.error("Doc profile fetch fail", e); }
+            
+            const sRes = await fetch(`${API_URL}/api/v1/doctors/stats`, {
+              headers: { "x-user-id": user.id }
+            });
+            if (sRes.ok) setStats(await sRes.json());
+          } catch (e) { console.error("Doc data fetch fail", e); }
         }
 
         const names = user.user_metadata?.full_name?.split(" ") || ["", ""];
-        const p: HealthProfileResponse = hProfile;
-
+        
         setData({
-          firstName: p.firstName || names[0] || "",
-          lastName: p.lastName || names.slice(1).join(" ") || "",
-          dob: p.dob || "",
-          sex: (p.gender as ProfileData["sex"]) || "",
-          phone: p.phone || dProfile.phone || "",
-          state: p.state || "",
-          lga: p.lga || "",
-          bloodType: p.bloodGroup || "",
-          genotype: p.genotype || "",
-          weight: p.weight || "",
-          height: p.height || "",
-          chronicConditions: JSON.parse(p.chronicConditions || "[]"),
-          allergies: JSON.parse(p.allergies || "[]"),
-          medications: JSON.parse(p.medications || "[]"),
-          familyHistory: JSON.parse(p.familyHistory || "[]"),
-          vaccinations: JSON.parse(p.vaccinations || "[]"),
-          medicalHistory: JSON.parse(p.medicalHistory || "[]"),
-          emergencyName: p.emergencyName || "",
-          emergencyPhone: p.emergencyPhone || "",
-          emergencyRelation: p.emergencyRelation || "",
-          // Doctor fields
+          firstName: hProfile.firstName || names[0] || "",
+          lastName: hProfile.lastName || names.slice(1).join(" ") || "",
+          dob: hProfile.dob || "",
+          sex: (hProfile.gender as ProfileData["sex"]) || "",
+          phone: hProfile.phone || dProfile.phone || "",
+          state: hProfile.state || "",
+          lga: hProfile.lga || "",
+          bloodType: hProfile.bloodGroup || "",
+          genotype: hProfile.genotype || "",
+          weight: hProfile.weight || "",
+          height: hProfile.height || "",
+          chronicConditions: JSON.parse(hProfile.chronicConditions || "[]"),
+          allergies: JSON.parse(hProfile.allergies || "[]"),
+          medications: JSON.parse(hProfile.medications || "[]"),
+          familyHistory: JSON.parse(hProfile.familyHistory || "[]"),
+          vaccinations: JSON.parse(hProfile.vaccinations || "[]"),
+          medicalHistory: JSON.parse(hProfile.medicalHistory || "[]"),
+          emergencyName: hProfile.emergencyName || "",
+          emergencyPhone: hProfile.emergencyPhone || "",
+          emergencyRelation: hProfile.emergencyRelation || "",
           fullName: dProfile.fullName || user.user_metadata?.full_name || "",
           mdcnNumber: dProfile.mdcnNumber || "",
           specialization: dProfile.specialization || "",
@@ -573,7 +916,12 @@ export default function HealthProfileSetup() {
           hospitalState: dProfile.hospitalState || "",
           hospitalLga: dProfile.hospitalLga || "",
           bio: dProfile.bio || "",
+          coverUrl: dProfile.coverUrl || "",
+          avatarUrl: hProfile.avatarUrl || dProfile.avatarUrl || "",
         });
+        
+        // Default to profile view
+        setView("profile");
       } catch (err) {
         console.error("Failed to fetch profile:", err);
       } finally {
@@ -581,7 +929,8 @@ export default function HealthProfileSetup() {
       }
     };
     init();
-  }, [supabase, API_URL]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSave = async () => {
     if (!user) return;
@@ -639,7 +988,7 @@ export default function HealthProfileSetup() {
     }
   };
 
-  const pct = calcCompletion(data);
+  const pct = calcCompletion(data, isDoctor);
 
   if (loading) {
     return (
@@ -660,15 +1009,28 @@ export default function HealthProfileSetup() {
             <div className="hp-success-ring"><Ic.Check /></div>
             <h2>Profile saved!</h2>
             <p>Your {isDoctor ? "professional identity" : "health profile"} is now updated.</p>
-            <button className="hp-btn hp-btn-primary" onClick={() => window.location.assign("/dashboard")}>Back to Dashboard</button>
+            <button className="hp-btn hp-btn-primary" onClick={() => { setSaved(false); setView("profile"); }}>Back to Profile</button>
           </div>
+        ) : view === "profile" ? (
+          isDoctor ? (
+             <ClinicianProfileView doctor={data} stats={stats} onEdit={() => setView("edit")} user={user!} isOwner={true} />
+          ) : (
+             <PatientProfileView data={data} onEdit={() => setView("edit")} user={user!} isOwner={true} />
+          )
         ) : (
           <>
             <div className="hp-header">
               <div className="hp-eyebrow"><div className="hp-eyebrow-dot" /> Profile Settings</div>
-              <h1 className="hp-title">Build your <span>dashboard identity</span></h1>
+              <h1 className="hp-title">{isDoctor ? "Edit your " : "Build your "}<span>dashboard identity</span></h1>
               <p className="hp-subtitle">{isDoctor ? "Manage your clinical credentials and professional bio." : "Powers the AfriDx engine for personalized diagnostics."}</p>
             </div>
+            
+            {isDoctor && (
+              <button className="hp-btn hp-btn-ghost" onClick={() => setView("profile")} style={{marginBottom:24}}>
+                <Ic.ChevronLeft /> Back to View Profile
+              </button>
+            )}
+
             <div className="hp-completion-bar">
               <div className="hp-completion-pct">{pct}%</div>
               <div className="hp-completion-text">
@@ -683,7 +1045,7 @@ export default function HealthProfileSetup() {
                 </button>
               ))}
             </div>
-            {currentStepObj?.key === "personal" && <StepPersonal data={data} set={set} />}
+            {currentStepObj?.key === "personal" && <StepPersonal data={data} set={set} onUpload={handleUpload} uploading={uploading} />}
             {currentStepObj?.key === "clinical" && <StepClinical data={data} set={set} />}
             {currentStepObj?.key === "conditions" && <StepConditions data={data} set={set} />}
             {currentStepObj?.key === "medications" && <StepMedications data={data} set={set} />}

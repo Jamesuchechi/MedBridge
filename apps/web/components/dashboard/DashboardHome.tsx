@@ -1,13 +1,24 @@
-"use client";
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 interface User {
+  id: string;
   name: string;
   email: string;
   role: string;
   initials: string;
   profileComplete: number;
+}
+
+interface Stat {
+  label: string;
+  value: string | number;
+  icon: React.ComponentType;
+}
+
+interface PatientActivity {
+  patientName: string;
+  chiefComplaint: string;
+  createdAt: string;
 }
 
 const Ic = {
@@ -63,20 +74,47 @@ const PATIENT_STATS = [
   { label: "Health Score",   value: "74", icon: Ic.Shield },
 ];
 
-const DOCTOR_STATS = [
-  { label: "Patient Consults", value: "28", icon: Ic.Activity },
-  { label: "Pending Reviews",  value: "4",  icon: Ic.FileText },
-  { label: "Active Cases",     value: "12", icon: Ic.Shield },
-  { label: "Referrals Sent",   value: "7",  icon: Ic.Activity },
-];
-
 export function DashboardHome({ user }: { user: User }) {
   const h = new Date().getHours();
   const part = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   const first = user.name.split(" ")[0];
   const isDoctor = ["doctor", "CLINICIAN"].includes(user.role);
 
-  const stats = isDoctor ? DOCTOR_STATS : PATIENT_STATS;
+  const [stats, setStats] = useState<Stat[]>(PATIENT_STATS);
+  const [recentPatients, setRecentPatients] = useState<PatientActivity[]>([]);
+
+  useEffect(() => {
+    if (isDoctor && user.id) {
+      const fetchData = async () => {
+        try {
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+          const headers = { "x-user-id": user.id };
+
+          // Fetch Stats
+          const sRes = await fetch(`${API_URL}/api/v1/doctors/stats`, { headers });
+          if (sRes.ok) {
+            const data = await sRes.json();
+            setStats([
+              { label: "Total Consults", value: data.totalConsultations, icon: Ic.Activity },
+              { label: "Pending Reviews",  value: data.pendingReviews,  icon: Ic.FileText },
+              { label: "Active Cases",     value: data.activeCases,     icon: Ic.Shield },
+              { label: "Referrals Sent",   value: data.referralsSent,   icon: Ic.Activity },
+            ]);
+          }
+
+          // Fetch Patients
+          const pRes = await fetch(`${API_URL}/api/v1/patients`, { headers });
+          if (pRes.ok) {
+            const pData = await pRes.json();
+            setRecentPatients(pData.slice(0, 3));
+          }
+        } catch (err) {
+          console.error("Dashboard fetch error:", err);
+        }
+      };
+      fetchData();
+    }
+  }, [isDoctor, user.id]);
 
   return (
     <div>
@@ -219,16 +257,18 @@ export function DashboardHome({ user }: { user: User }) {
           </h3>
           {isDoctor ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {[
-                { name: "Amaka Okafor", time: "14:20", type: "Malaria Screening" },
-                { name: "John Doe", time: "11:05", type: "Hypertension Review" },
-                { name: "Bisi Akande", time: "09:30", type: "General Consultation" },
-              ].map((p, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600 }}>{p.name}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text3)' }}>{p.type} · {p.time}</div>
+              {recentPatients.length > 0 ? (
+                recentPatients.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{p.patientName}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text3)' }}>{p.chiefComplaint} · {new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text3)' }}>
+                  No recent patient activity.
                 </div>
-              ))}
+              )}
             </div>
           ) : (
             <>

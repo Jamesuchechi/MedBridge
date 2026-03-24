@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { db, healthProfiles, users } from "@medbridge/db";
 import { eq } from "drizzle-orm";
+import { supabase } from "../config/supabase";
+
+const BUCKET_NAME = process.env.SUPABASE_STORAGE_BUCKET || "avatars";
 
 export const getProfile = async (req: Request, res: Response) => {
   const userId = req.headers["x-user-id"] as string;
@@ -10,18 +13,29 @@ export const getProfile = async (req: Request, res: Response) => {
   }
 
   try {
-    const [profile] = await db
-      .select()
+    const [data] = await db
+      .select({
+        profile: healthProfiles,
+        user: {
+          avatarUrl: users.avatarUrl,
+          name: users.name,
+        }
+      })
       .from(healthProfiles)
+      .innerJoin(users, eq(healthProfiles.userId, users.id))
       .where(eq(healthProfiles.userId, userId))
       .limit(1);
 
-    if (!profile) {
-      // Return 200 with null values so frontend can still render the form
-      return res.status(200).json({ userId });
+    if (!data) {
+      // Still need to check if user exists even if profile doesn't
+      const [u] = await db.select({ avatarUrl: users.avatarUrl }).from(users).where(eq(users.id, userId)).limit(1);
+      return res.status(200).json({ userId, avatarUrl: u?.avatarUrl });
     }
 
-    res.status(200).json(profile);
+    res.status(200).json({
+      ...data.profile,
+      avatarUrl: data.user.avatarUrl,
+    });
   } catch (err) {
     console.error("[GET PROFILE ERROR]:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -85,5 +99,33 @@ export const upsertProfile = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("[UPSERT PROFILE ERROR]:", err);
     res.status(500).json({ error: "Failed to save profile", message: err instanceof Error ? err.message : String(err) });
+  }
+};
+
+export const getProfileUploadUrl = async (req: Request, res: Response) => {
+  const userId = req.headers["x-user-id"] as string;
+  const { fileName, type } = req.query;
+
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!fileName || !type) return res.status(400).json({ error: "fileName and type (avatar|cover) are required" });
+
+  const extension = (fileName as string).split(".").pop();
+  const path = `${userId}/${type}.${extension}`;
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .createSignedUploadUrl(path);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      uploadUrl: data.signedUrl,
+      fileUrl: `${process.env.SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${path}`,
+      path,
+    });
+  } catch (err) {
+    console.error("[GET PROFILE UPLOAD URL ERROR]:", err);
+    res.status(500).json({ error: "Failed to generate upload URL", message: err instanceof Error ? err.message : String(err) });
   }
 };

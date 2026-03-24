@@ -17,6 +17,7 @@ exports.users = (0, pg_core_1.pgTable)("users", {
     isVerified: (0, pg_core_1.boolean)("is_verified").default(false).notNull(),
     mdcnVerified: (0, pg_core_1.boolean)("mdcn_verified").default(false),
     clinicId: (0, pg_core_1.uuid)("clinic_id"),
+    avatarUrl: (0, pg_core_1.text)("avatar_url"),
     createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
 });
@@ -193,6 +194,7 @@ exports.doctorProfiles = (0, pg_core_1.pgTable)("doctor_profiles", {
     verifiedBy: (0, pg_core_1.uuid)("verified_by").references(() => exports.users.id),
     verifiedAt: (0, pg_core_1.timestamp)("verified_at"),
     submittedAt: (0, pg_core_1.timestamp)("submitted_at").defaultNow().notNull(),
+    coverUrl: (0, pg_core_1.text)("cover_url"),
     updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
     createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
 });

@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 export const requireDoctor = (req: Request, res: Response, next: NextFunction) => {
   const role = req.headers["x-user-role"] as string | undefined;
 
-  if (role !== "CLINICIAN") {
+  if (role !== "CLINICIAN" && role !== "doctor") {
     return res.status(403).json({
       error:   "Clinician access required.",
       message: "This feature is only available to registered doctors on MedBridge.",
@@ -24,7 +24,7 @@ export const requireVerifiedDoctor = async (
   const role   = req.headers["x-user-role"] as string | undefined;
   const userId = req.headers["x-user-id"]   as string | undefined;
 
-  if (role !== "CLINICIAN") {
+  if (role !== "CLINICIAN" && role !== "doctor") {
     return res.status(403).json({
       error:   "Clinician access required.",
       code:    "NOT_CLINICIAN",

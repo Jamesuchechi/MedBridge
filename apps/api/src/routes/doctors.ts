@@ -8,6 +8,7 @@ import {
   getQueueStats,
   getDoctorDetail,
   moderateDoctor,
+  getDoctorStats,
 } from "../controllers/doctors.controller";
 import { requireDoctor } from "../middleware/doctor.middleware";
 
@@ -34,6 +35,9 @@ router.get("/me", requireDoctor, getDoctorProfile);
 
 // PUT  /api/v1/doctors/me        — update own profile
 router.put("/me", requireDoctor, updateDoctorProfile);
+
+// GET  /api/v1/doctors/stats     — get clinical stats
+router.get("/stats", requireDoctor, getDoctorStats);
 
 // ─── Admin ────────────────────────────────────────────────────────────────────
 // GET   /api/v1/doctors/admin/queue/stats
