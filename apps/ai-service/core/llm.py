@@ -100,7 +100,10 @@ async def call_llm_with_fallback(
                 if response_format and provider in ["openai", "groq", "openrouter"]:
                     params["response_format"] = response_format
                 
-                res = client.chat.completions.create(**params)
+                res = client.chat.completions.create(
+                    **params,
+                    timeout=15.0  # Per-try timeout to avoid hanging on a slow provider
+                )
                 content = res.choices[0].message.content
                 if content:
                     return content, provider, model

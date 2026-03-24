@@ -344,30 +344,30 @@
 - [x] Apply AfriDx engine to copilot differentials (same as symptom checker)
 - [x] Write SOAP note generation prompt
 - [x] Structured output parsing with Pydantic
-- [ ] Audit trail: log all copilot sessions with doctor ID, timestamp, prompt version
+- [x] Audit trail: log all copilot sessions with doctor ID, timestamp, prompt version
 
-### 3.4 Referral Intelligence
-- [ ] Build referral creation form (from copilot output or standalone)
-  - [ ] Select receiving doctor (search by name / specialization)
-  - [ ] Auto-populate with copilot case summary
-  - [ ] Urgency score selector (1–5)
-  - [ ] Add additional notes
-- [ ] `POST /api/v1/copilot/referral` — creates referral record
-- [ ] Build receiving doctor notification (email + in-app)
-- [ ] Build referral inbox for doctors (list of incoming referrals)
-- [ ] Build referral detail view (full clinical packet)
-- [ ] Build referral status tracking (pending / accepted / completed)
-- [ ] Generate referral PDF document (for physical handover)
-- [ ] Patient notification when referral is created
+### 3.4 Referral Intelligence [x]
+- [x] Build referral creation form (from copilot output or standalone) [x]
+  - [x] Select receiving doctor (search by name / specialization) [x]
+  - [x] Auto-populate with copilot case summary [x]
+  - [x] Urgency score selector (1–5) [x]
+  - [x] Add additional notes [x]
+- [x] `POST /api/v1/copilot/referral` — creates referral record [x]
+- [x] Build receiving doctor notification (email + in-app) [x]
+- [x] Build referral inbox for doctors (list of incoming referrals) [x]
+- [x] Build referral detail view (full clinical packet) [x]
+- [x] Build referral status tracking (pending / accepted / completed) [x]
+- [x] Generate referral PDF document (for physical handover) [x]
+- [x] Patient notification when referral is created [x]
 
-### 3.5 Patient–Doctor Connection
-- [ ] Build "Find a Doctor" feature for patients
-  - [ ] Search by specialization, location, clinic
-  - [ ] Doctor profile cards (specialization, clinic, bio)
-- [ ] Build consultation request flow (patient requests consultation)
-- [ ] Doctor can accept/decline consultation requests
-- [ ] Shared record view: doctor can view patient's MedBridge health profile (with consent)
-- [ ] Patient consent flow: grant/revoke doctor access to health profile
+### 3.5 Patient–Doctor Connection [x]
+- [x] Build "Find a Doctor" feature for patients [x]
+  - [x] Search by specialization, location, clinic [x]
+  - [x] Doctor profile cards (specialization, clinic, bio) [x]
+- [x] Build consultation request flow (patient requests consultation) [x]
+- [x] Doctor can accept/decline consultation requests [x]
+- [x] Shared record view: doctor can view patient's MedBridge health profile (with consent) [x]
+- [x] Patient consent flow: grant/revoke doctor access to health profile [x]
 
 ### 3.6 Phase 3 Testing
 - [ ] E2E: Doctor signup → verified → run case analysis → generate referral

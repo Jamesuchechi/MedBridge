@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import axios from "axios";
 import { z } from "zod";
-import { db, clinicalCases } from "@medbridge/db";
+import { db, clinicalCases, copilotAuditLogs } from "@medbridge/db";
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
 
@@ -45,14 +45,55 @@ const saveCaseSchema = z.object({
   patientSex: z.string(),
   chiefComplaint: z.string(),
   vitals: vitalsSchema,
-  analysis: z.any(), // The full AI result
+  analysis: z.unknown(), // The full AI result
   soapNote: z.string(),
   patientId: z.string().optional(),
 });
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Robustly logs each copilot session to the audit trail.
+ */
+async function logCopilotSession({
+  doctorId,
+  action,
+  input,
+  output,
+  status,
+  promptVersion,
+  errorMessage
+}: {
+  doctorId: string;
+  action: "analyze" | "generate-soap";
+  input: unknown;
+  output?: unknown;
+  status: "success" | "failure";
+  promptVersion?: string;
+  errorMessage?: string;
+}) {
+  try {
+    await db.insert(copilotAuditLogs).values({
+      doctorId,
+      action,
+      promptVersion: promptVersion || "unknown",
+      input: JSON.stringify(input),
+      output: output ? JSON.stringify(output) : null,
+      status,
+      errorMessage: errorMessage || null,
+    });
+  } catch (error) {
+    console.error("[AUDIT LOG ERROR]: Failed to log copilot session:", error);
+    // We don't throw here to avoid failing the main request if logging fails,
+    // though in a highly critical system we might.
+  }
+}
+
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
 export const analyzeCase = async (req: Request, res: Response) => {
+  const doctorId = req.headers["x-user-id"] as string;
+  
   try {
     const valet = analysisSchema.safeParse(req.body);
     if (!valet.success) {
@@ -60,22 +101,51 @@ export const analyzeCase = async (req: Request, res: Response) => {
     }
 
     const aiResponse = await axios.post(`${AI_SERVICE_URL}/internal/copilot/analyze`, valet.data);
-    res.status(200).json(aiResponse.data);
-  } catch (err: unknown) {
-    if (axios.isAxiosError(err)) {
-      console.error("[COPILOT ANALYZE ERROR]:", err.response?.data || err.message);
-      return res.status(err.response?.status || 500).json({ 
-        error: "AI Analysis failed", 
-        message: err.response?.data?.detail || err.message 
+    const data = aiResponse.data;
+
+    // Log success
+    if (doctorId) {
+      await logCopilotSession({
+        doctorId,
+        action: "analyze",
+        input: valet.data,
+        output: data,
+        status: "success",
+        promptVersion: data.prompt_version,
       });
     }
-    const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+
+    res.status(200).json(data);
+  } catch (err: unknown) {
+    let errorMessage = "An unknown error occurred";
+    let status = 500;
+
+    if (axios.isAxiosError(err)) {
+      status = err.response?.status || 500;
+      errorMessage = err.response?.data?.detail || err.message;
+    } else if (err instanceof Error) {
+      errorMessage = err.message;
+    }
+
+    // Log failure
+    if (doctorId) {
+      await logCopilotSession({
+        doctorId,
+        action: "analyze",
+        input: req.body,
+        status: "failure",
+        errorMessage,
+      });
+    }
+
     console.error("[COPILOT ANALYZE ERROR]:", errorMessage);
-    res.status(500).json({ error: "AI Analysis failed", message: errorMessage });
+    res.status(status).json({ error: "AI Analysis failed", message: errorMessage });
   }
 };
 
 export const generateSoapNote = async (req: Request, res: Response) => {
+  const doctorId = req.headers["x-user-id"] as string;
+
   try {
     const valet = soapSchema.safeParse(req.body);
     if (!valet.success) {
@@ -83,18 +153,45 @@ export const generateSoapNote = async (req: Request, res: Response) => {
     }
 
     const aiResponse = await axios.post(`${AI_SERVICE_URL}/internal/copilot/generate-soap`, valet.data);
-    res.status(200).json(aiResponse.data);
-  } catch (err: unknown) {
-    if (axios.isAxiosError(err)) {
-      console.error("[COPILOT SOAP ERROR]:", err.response?.data || err.message);
-      return res.status(err.response?.status || 500).json({ 
-        error: "SOAP generation failed", 
-        message: err.response?.data?.detail || err.message 
+    const data = aiResponse.data;
+
+    // Log success
+    if (doctorId) {
+      await logCopilotSession({
+        doctorId,
+        action: "generate-soap",
+        input: valet.data,
+        output: data,
+        status: "success",
+        promptVersion: data.prompt_version,
       });
     }
-    const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+
+    res.status(200).json(data);
+  } catch (err: unknown) {
+    let errorMessage = "An unknown error occurred";
+    let status = 500;
+
+    if (axios.isAxiosError(err)) {
+      status = err.response?.status || 500;
+      errorMessage = err.response?.data?.detail || err.message;
+    } else if (err instanceof Error) {
+      errorMessage = err.message;
+    }
+
+    // Log failure
+    if (doctorId) {
+      await logCopilotSession({
+        doctorId,
+        action: "generate-soap",
+        input: req.body,
+        status: "failure",
+        errorMessage,
+      });
+    }
+
     console.error("[COPILOT SOAP ERROR]:", errorMessage);
-    res.status(500).json({ error: "SOAP generation failed", message: errorMessage });
+    res.status(status).json({ error: "SOAP generation failed", message: errorMessage });
   }
 };
 

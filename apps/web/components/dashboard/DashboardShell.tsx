@@ -11,7 +11,10 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { DashboardHome } from "./DashboardHome";
 import { useAuthStore } from "@/store/auth.store";
+import { useNotificationStore } from "@/store/notification.store";
 import { Footer } from "@/components/layout/Footer";
+import { NotificationDropdown } from "./NotificationDropdown";
+import { io } from "socket.io-client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type UserRole = "PATIENT" | "CLINICIAN" | "CLINIC_ADMIN" | "SUPER_ADMIN" | "patient" | "doctor" | "clinic";
@@ -199,11 +202,13 @@ const ALL_NAV: NavItem[] = [
   { id: "admin-queue", label: "Verification Queue", href: "/dashboard/admin/doctors/queue", icon: Ic.ShieldCheck, roleGate: ["clinic", "CLINIC_ADMIN", "SUPER_ADMIN"] },
 
   // Patient / Generic
+  { id: "doctors", label: "Doctors", href: "/dashboard/doctors", icon: Ic.Users, roleGate: ["patient", "PATIENT"] },
   { id: "symptoms", label: "Symptom Checker", href: "/dashboard/symptoms", icon: Ic.Activity, badge: "AI", roleGate: ["patient", "PATIENT"] },
   { id: "documents", label: "Documents", href: "/dashboard/documents", icon: Ic.FileText },
   { id: "drugs", label: "Drug Intelligence", href: "/dashboard/drugs", icon: Ic.Pill },
   { id: "community", label: "CommunityRx", href: "/dashboard/community", icon: Ic.Map },
-  { id: "profile", label: "My Profile", href: "/dashboard/profile", icon: Ic.User, dividerBefore: true },
+  { id: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: Ic.Bell, dividerBefore: true },
+  { id: "profile", label: "My Profile", href: "/dashboard/profile", icon: Ic.User },
   { id: "settings", label: "Settings", href: "/dashboard/settings", icon: Ic.Settings, dividerBefore: true },
 ];
 
@@ -457,6 +462,24 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .dropdown-item.danger:hover { background: rgba(255, 92, 92, 0.08); }
 .dropdown-item svg { width: 16px; height: 16px; }
 .dropdown-divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+.topbar-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--accent);
+  color: #000;
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg);
+  font-family: 'Syne', sans-serif;
+}
 `;
 
 // ─── Main Export ─────────────────────────────────────────────────────────────
@@ -468,8 +491,11 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [user, setUser] = useState<User>(DEFAULT_USER);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const { unreadCount, addNotification } = useNotificationStore();
 
   const isFetchingUser = useRef(false);
 
@@ -539,6 +565,24 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
     };
     fetchUser();
   }, []);
+
+  // Socket.io for real-time notifications
+  useEffect(() => {
+    if (!user.id) return;
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+    const socket = io(API_URL, {
+      query: { userId: user.id }
+    });
+
+    socket.on("notification:new", (notification) => {
+      addNotification(notification);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user.id, addNotification]);
 
   const activeNav = ALL_NAV.find(n => pathname === n.href || pathname.startsWith(n.href + "/"))?.id ?? "home";
 
@@ -625,7 +669,19 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
             <button className="topbar-icon-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
               {theme === 'dark' ? <Ic.Sun /> : <Ic.Moon />}
             </button>
-            <button className="topbar-icon-btn" aria-label="Notifications"><Ic.Bell /></button>
+            <div style={{ position: 'relative' }}>
+              <button 
+                className="topbar-icon-btn" 
+                aria-label="Notifications"
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                <Ic.Bell />
+                {unreadCount > 0 && <span className="topbar-badge">{unreadCount}</span>}
+              </button>
+              {showNotifications && (
+                <NotificationDropdown userId={user.id} onClose={() => setShowNotifications(false)} />
+              )}
+            </div>
 
             <div className="user-dropdown-wrapper" ref={dropdownRef}>
               <button

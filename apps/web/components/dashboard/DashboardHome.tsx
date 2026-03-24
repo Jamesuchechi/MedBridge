@@ -88,7 +88,10 @@ export function DashboardHome({ user }: { user: User }) {
       const fetchData = async () => {
         try {
           const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-          const headers = { "x-user-id": user.id };
+          const headers = { 
+            "x-user-id": user.id,
+            "x-user-role": user.role
+          };
 
           // Fetch Stats
           const sRes = await fetch(`${API_URL}/api/v1/doctors/stats`, { headers });
@@ -114,7 +117,7 @@ export function DashboardHome({ user }: { user: User }) {
       };
       fetchData();
     }
-  }, [isDoctor, user.id]);
+  }, [isDoctor, user.id, user.role]);
 
   return (
     <div>

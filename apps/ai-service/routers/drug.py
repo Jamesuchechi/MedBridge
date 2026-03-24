@@ -17,6 +17,7 @@ import json
 from core.llm import get_llm_client, call_llm_with_fallback
 
 router = APIRouter()
+EXPLAIN_CACHE: Dict[str, Any] = {}
 
 
 # ─── Models ───────────────────────────────────────────────────────────────────
@@ -292,12 +293,17 @@ Respond ONLY in valid JSON:
     user = f"""Drug: {request.drugName}
 Question: {request.question}
 Patient context: {request.patientContext or 'General adult patient'}
-
-Explain in simple terms what this drug is for, how to take it, and what to watch out for."""
+"""
+    
+    # Simple cache key
+    cache_key = f"{request.drugName}:{request.question}:{request.patientContext or ''}"
+    if cache_key in EXPLAIN_CACHE:
+        print(f"DEBUG: Cache hit for {request.drugName}")
+        return DrugExplainResponse(**EXPLAIN_CACHE[cache_key])
 
     messages = [
         {"role": "system", "content": system},
-        {"role": "user", "content": user}
+        {"role": "user", "content": user + "\nExplain in simple terms what this drug is for, how to take it, and what to watch out for."}
     ]
 
     content, provider, model = await call_llm_with_fallback(
@@ -309,13 +315,16 @@ Explain in simple terms what this drug is for, how to take it, and what to watch
     if content:
         try:
             data = json.loads(content[content.find('{'):content.rfind('}')+1])
-            return DrugExplainResponse(
-                drugName=request.drugName,
-                explanation=data.get("explanation", ""),
-                keyPoints=data.get("keyPoints", []),
-                warning=data.get("warning"),
-                disclaimer="This explanation is for general information only. Always follow your doctor's or pharmacist's instructions."
-            )
+            response_data = {
+                "drugName": request.drugName,
+                "explanation": data.get("explanation", ""),
+                "keyPoints": data.get("keyPoints", []),
+                "warning": data.get("warning"),
+                "disclaimer": "This explanation is for general information only. Always follow your doctor's or pharmacist's instructions."
+            }
+            # Cache the response
+            EXPLAIN_CACHE[cache_key] = response_data
+            return DrugExplainResponse(**response_data)
         except Exception as e:
             print(f"[JSON DECODE ERROR] ({provider}): {e}")
 

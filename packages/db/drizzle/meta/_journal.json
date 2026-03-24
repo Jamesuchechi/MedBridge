@@ -43,6 +43,34 @@
       "when": 1774358626371,
       "tag": "0006_ancient_post",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774365432571,
+      "tag": "0007_adorable_wendigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1774366719011,
+      "tag": "0008_fantastic_champions",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1774367726618,
+      "tag": "0009_careless_scourge",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1774376993628,
+      "tag": "0010_wet_kulan_gath",
+      "breakpoints": true
     }
   ]
 }

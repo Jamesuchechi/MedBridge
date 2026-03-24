@@ -47,6 +47,12 @@ if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is missing");
 }
 const connectionString = process.env.DATABASE_URL;
-const client = (0, postgres_1.default)(connectionString);
+const client = (0, postgres_1.default)(connectionString, {
+    prepare: false, // Essential for Supabase transaction pooler (port 6543)
+    connect_timeout: 30,
+    idle_timeout: 20,
+    max: 10,
+    keep_alive: 5,
+});
 exports.db = (0, postgres_js_1.drizzle)(client, { schema });
 __exportStar(require("./schema"), exports);

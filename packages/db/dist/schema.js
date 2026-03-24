@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clinicalCases = exports.doctorVerificationAudit = exports.doctorProfiles = exports.moderationAuditLog = exports.drugPriceReports = exports.drugAvailabilityReports = exports.pharmacies = exports.drugQueryLogs = exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
+exports.patientDoctorConsent = exports.consultationRequests = exports.referrals = exports.notifications = exports.copilotAuditLogs = exports.clinicalCases = exports.doctorVerificationAudit = exports.doctorProfiles = exports.moderationAuditLog = exports.drugPriceReports = exports.drugAvailabilityReports = exports.pharmacies = exports.drugQueryLogs = exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 exports.roleEnum = (0, pg_core_1.pgEnum)("role", [
     "PATIENT",
@@ -219,6 +219,63 @@ exports.clinicalCases = (0, pg_core_1.pgTable)("clinical_cases", {
     vitals: (0, pg_core_1.text)("vitals"), // JSON string
     analysis: (0, pg_core_1.text)("analysis").notNull(), // AI JSON response
     soapNote: (0, pg_core_1.text)("soap_note"),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+    updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
+});
+exports.copilotAuditLogs = (0, pg_core_1.pgTable)("copilot_audit_logs", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    doctorId: (0, pg_core_1.uuid)("doctor_id").notNull().references(() => exports.users.id, { onDelete: "cascade" }),
+    action: (0, pg_core_1.text)("action").notNull(), // analyze, generate-soap
+    promptVersion: (0, pg_core_1.text)("prompt_version").notNull(),
+    input: (0, pg_core_1.text)("input").notNull(), // JSON string
+    output: (0, pg_core_1.text)("output"), // JSON string (null if failed)
+    status: (0, pg_core_1.text)("status").notNull(), // success, failure
+    errorMessage: (0, pg_core_1.text)("error_message"),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+});
+exports.notifications = (0, pg_core_1.pgTable)("notifications", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    userId: (0, pg_core_1.uuid)("user_id").notNull().references(() => exports.users.id, { onDelete: "cascade" }),
+    title: (0, pg_core_1.text)("title").notNull(),
+    message: (0, pg_core_1.text)("message").notNull(),
+    type: (0, pg_core_1.text)("type").notNull().default("info"), // info, success, warning, error
+    link: (0, pg_core_1.text)("link"), // Optional URL to navigate to
+    isRead: (0, pg_core_1.boolean)("is_read").notNull().default(false),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+});
+exports.referrals = (0, pg_core_1.pgTable)("referrals", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    patientId: (0, pg_core_1.uuid)("patient_id").references(() => exports.users.id, { onDelete: "set null" }),
+    patientName: (0, pg_core_1.text)("patient_name").notNull(),
+    patientAge: (0, pg_core_1.text)("patient_age").notNull(),
+    patientSex: (0, pg_core_1.text)("patient_sex").notNull(),
+    sendingDoctorId: (0, pg_core_1.uuid)("sending_doctor_id").notNull().references(() => exports.users.id, { onDelete: "cascade" }),
+    receivingDoctorId: (0, pg_core_1.uuid)("receiving_doctor_id").references(() => exports.users.id, { onDelete: "set null" }),
+    receivingFacility: (0, pg_core_1.text)("receiving_facility"),
+    specialty: (0, pg_core_1.text)("specialty").notNull(),
+    priority: (0, pg_core_1.text)("priority").notNull().default("Routine"), // Routine, Urgent, Stat
+    urgencyScore: (0, pg_core_1.integer)("urgency_score").notNull().default(1), // 1-5
+    notes: (0, pg_core_1.text)("notes"),
+    clinicalSummary: (0, pg_core_1.text)("clinical_summary").notNull(), // JSON string
+    status: (0, pg_core_1.text)("status").notNull().default("pending"), // pending, accepted, rejected, completed
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+    updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
+});
+exports.consultationRequests = (0, pg_core_1.pgTable)("consultation_requests", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    patientId: (0, pg_core_1.uuid)("patient_id").notNull().references(() => exports.users.id, { onDelete: "cascade" }),
+    doctorId: (0, pg_core_1.uuid)("doctor_id").notNull().references(() => exports.users.id, { onDelete: "cascade" }),
+    status: (0, pg_core_1.text)("status").notNull().default("pending"), // pending, accepted, declined, completed
+    message: (0, pg_core_1.text)("message"),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+    updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
+});
+exports.patientDoctorConsent = (0, pg_core_1.pgTable)("patient_doctor_consent", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    patientId: (0, pg_core_1.uuid)("patient_id").notNull().references(() => exports.users.id, { onDelete: "cascade" }),
+    doctorId: (0, pg_core_1.uuid)("doctor_id").notNull().references(() => exports.users.id, { onDelete: "cascade" }),
+    status: (0, pg_core_1.text)("status").notNull().default("active"), // active, revoked
+    expiresAt: (0, pg_core_1.timestamp)("expires_at"),
     createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
 });

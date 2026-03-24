@@ -4,9 +4,9 @@ import { eq } from "drizzle-orm";
 
 /** User must have CLINICIAN role (set in Supabase user_metadata at signup). */
 export const requireDoctor = (req: Request, res: Response, next: NextFunction) => {
-  const role = req.headers["x-user-role"] as string | undefined;
+  const role = (req.headers["x-user-role"] as string | undefined)?.toUpperCase();
 
-  if (role !== "CLINICIAN" && role !== "doctor") {
+  if (role !== "CLINICIAN" && role !== "DOCTOR") {
     return res.status(403).json({
       error:   "Clinician access required.",
       message: "This feature is only available to registered doctors on MedBridge.",
@@ -21,10 +21,10 @@ export const requireVerifiedDoctor = async (
   res: Response,
   next: NextFunction
 ) => {
-  const role   = req.headers["x-user-role"] as string | undefined;
+  const role   = (req.headers["x-user-role"] as string | undefined)?.toUpperCase();
   const userId = req.headers["x-user-id"]   as string | undefined;
 
-  if (role !== "CLINICIAN" && role !== "doctor") {
+  if (role !== "CLINICIAN" && role !== "DOCTOR") {
     return res.status(403).json({
       error:   "Clinician access required.",
       code:    "NOT_CLINICIAN",

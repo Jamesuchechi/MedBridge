@@ -9,6 +9,12 @@ from core.afridx import apply_afridx_weighting
 
 router = APIRouter()
 
+# ─── Prompt Versions ──────────────────────────────────────────────────────────
+PROMPT_VERSIONS = {
+    "analysis": "v1.0",
+    "soap": "v1.0"
+}
+
 # ─── Models ───────────────────────────────────────────────────────────────────
 
 class Vitals(BaseModel):
@@ -37,6 +43,7 @@ class CaseAnalysisResponse(BaseModel):
     summary: str
     differentials: List[Differential]
     investigations: List[str]
+    prompt_version: str = Field(default="v1.0")
 
 class SoapNoteRequest(BaseModel):
     caseData: CaseAnalysisRequest
@@ -44,6 +51,7 @@ class SoapNoteRequest(BaseModel):
 
 class SoapNoteResponse(BaseModel):
     soapNote: str
+    prompt_version: str = Field(default="v1.0")
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -96,7 +104,7 @@ async def analyze_case(request: CaseAnalysisRequest):
             )
             result["differentials"] = weighted_diffs
             
-            return CaseAnalysisResponse(**result)
+            return CaseAnalysisResponse(**result, prompt_version=PROMPT_VERSIONS["analysis"])
         except Exception as e:
             print(f"ERROR parsing LLM response: {e}\nContent: {content}")
             raise HTTPException(status_code=500, detail="AI returned invalid format")
@@ -120,7 +128,7 @@ async def generate_soap(request: SoapNoteRequest):
         if not soap_content:
             raise HTTPException(status_code=500, detail="Failed to generate SOAP note")
             
-        return SoapNoteResponse(soapNote=soap_content.strip())
+        return SoapNoteResponse(soapNote=soap_content.strip(), prompt_version=PROMPT_VERSIONS["soap"])
             
     except Exception as e:
         print(f"ERROR in generate_soap: {e}")

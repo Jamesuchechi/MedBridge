@@ -238,3 +238,65 @@ export const clinicalCases = pgTable("clinical_cases", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const copilotAuditLogs = pgTable("copilot_audit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  doctorId: uuid("doctor_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action: text("action").notNull(), // analyze, generate-soap
+  promptVersion: text("prompt_version").notNull(),
+  input: text("input").notNull(), // JSON string
+  output: text("output"), // JSON string (null if failed)
+  status: text("status").notNull(), // success, failure
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull().default("info"), // info, success, warning, error
+  link: text("link"), // Optional URL to navigate to
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const referrals = pgTable("referrals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  patientId: uuid("patient_id").references(() => users.id, { onDelete: "set null" }),
+  patientName: text("patient_name").notNull(),
+  patientAge: text("patient_age").notNull(),
+  patientSex: text("patient_sex").notNull(),
+  sendingDoctorId: uuid("sending_doctor_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  receivingDoctorId: uuid("receiving_doctor_id").references(() => users.id, { onDelete: "set null" }),
+  receivingFacility: text("receiving_facility"),
+  specialty: text("specialty").notNull(),
+  priority: text("priority").notNull().default("Routine"), // Routine, Urgent, Stat
+  urgencyScore: integer("urgency_score").notNull().default(1), // 1-5
+  notes: text("notes"),
+  clinicalSummary: text("clinical_summary").notNull(), // JSON string
+  status: text("status").notNull().default("pending"), // pending, accepted, rejected, completed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const consultationRequests = pgTable("consultation_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  patientId: uuid("patient_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  doctorId: uuid("doctor_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"), // pending, accepted, declined, completed
+  message: text("message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const patientDoctorConsent = pgTable("patient_doctor_consent", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  patientId: uuid("patient_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  doctorId: uuid("doctor_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("active"), // active, revoked
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

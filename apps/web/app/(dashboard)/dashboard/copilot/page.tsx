@@ -6,6 +6,8 @@ import { useAuthStore } from "@/store/auth.store";
 import CaseAnalysisForm, { CaseData } from "@/components/copilot/CaseAnalysisForm";
 import AnalysisResults, { AnalysisResponse } from "@/components/copilot/AnalysisResults";
 import SoapNoteEditor from "@/components/copilot/SoapNoteEditor";
+import { Modal } from "@/components/ui/Modal";
+import { ReferralForm } from "@/components/dashboard/ReferralForm";
 
 type View = "form" | "results" | "note";
 
@@ -17,6 +19,7 @@ export default function CopilotPage() {
   const [loading, setLoading] = useState(false);
   const [generatingNote, setGeneratingNote] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
+  const [showReferralModal, setShowReferralModal] = useState(false);
 
   // ─── Handlers ───────────────────────────────────────────────────────────────
 
@@ -138,6 +141,7 @@ export default function CopilotPage() {
           analysis={analysis} 
           onEditNote={handleEditNote} 
           onRestart={handleRestart} 
+          onRefer={() => setShowReferralModal(true)}
           loadingNote={generatingNote}
         />
       )}
@@ -150,6 +154,27 @@ export default function CopilotPage() {
           isSaving={savingNote}
         />
       )}
+
+      <Modal 
+        isOpen={showReferralModal} 
+        onClose={() => setShowReferralModal(false)}
+        title="Refer to Specialist"
+      >
+        <ReferralForm 
+          initialData={{
+            patientName: caseData?.patientName || "",
+            patientAge: caseData?.patientAge || "",
+            patientSex: caseData?.patientSex || "",
+            clinicalSummary: analysis || {}
+          }}
+          onSuccess={(ref) => {
+            setShowReferralModal(false);
+            alert(`Referral sent successfully to ${ref.receivingFacility || "Specialist"}`);
+            window.location.assign("/dashboard/referrals");
+          }}
+          onCancel={() => setShowReferralModal(false)}
+        />
+      </Modal>
       
       <div className="cp-disclaimer">
         <p><strong>Disclaimer:</strong> This is an AI-powered clinical assistant. All suggestions must be reviewed by a licensed medical professional. MedBridge Copilot is not a substitute for clinical judgment.</p>

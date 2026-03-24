@@ -10,7 +10,9 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@medbridge/db": ["../../packages/db/src/index.ts"],
+      "@medbridge/db/*": ["../../packages/db/src/*"]
     },
     "types": ["jest", "node"]
   },

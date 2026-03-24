@@ -25,11 +25,13 @@ export default function AnalysisResults({
   analysis, 
   onEditNote, 
   onRestart,
+  onRefer,
   loadingNote
 }: { 
   analysis: AnalysisResponse;
   onEditNote: () => void;
   onRestart: () => void;
+  onRefer: () => void;
   loadingNote?: boolean;
 }) {
   return (
@@ -79,18 +81,21 @@ export default function AnalysisResults({
             </div>
           </GlassCard>
 
-          <div className="action-btns-container">
-            <button 
-              className="action-btn primary" 
-              onClick={onEditNote}
-              disabled={loadingNote}
-            >
-              {loadingNote ? "Generating Note..." : "Generate & Edit SOAP Note"}
-            </button>
-            <button className="action-btn secondary" onClick={onRestart} disabled={loadingNote}>
-              New Case Analysis
-            </button>
-          </div>
+            <div className="action-btns-container">
+              <button 
+                className="action-btn primary" 
+                onClick={onEditNote}
+                disabled={loadingNote}
+              >
+                {loadingNote ? "Generating Note..." : "Generate & Edit SOAP Note"}
+              </button>
+              <button className="action-btn specialty" onClick={onRefer} disabled={loadingNote}>
+                Refer to Specialist
+              </button>
+              <button className="action-btn secondary" onClick={onRestart} disabled={loadingNote}>
+                New Case Analysis
+              </button>
+            </div>
         </div>
       </div>
 
@@ -210,9 +215,15 @@ export default function AnalysisResults({
           color: var(--text-primary);
           border: 1px solid var(--glass-border);
         }
+        .action-btn.specialty {
+          background: rgba(255, 255, 255, 0.05);
+          color: var(--accent-secondary);
+          border: 1px solid var(--accent-secondary);
+        }
         .action-btn:hover { transform: translateY(-2px); }
         .action-btn.primary:hover { box-shadow: 0 12px 30px rgba(0, 229, 160, 0.3); filter: brightness(1.1); }
         .action-btn.secondary:hover { background: var(--bg-card-hover); border-color: var(--accent-secondary); }
+        .action-btn.specialty:hover { background: rgba(61, 155, 255, 0.1); border-color: var(--accent-primary); color: var(--accent-primary); }
         
         @media (max-width: 600px) {
           .result-section, .investigations-section { padding: 20px; }

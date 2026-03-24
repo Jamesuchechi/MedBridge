@@ -252,7 +252,7 @@ export const checkInteractions = async (req: Request, res: Response) => {
           medicalHistory: profile.medicalHistory ? JSON.parse(profile.medicalHistory) : [],
         } : null,
       },
-      { timeout: 15000 }
+      { timeout: 45000 }
     );
 
     const result = aiResponse.data;
@@ -301,7 +301,7 @@ export const explainDrug = async (req: Request, res: Response) => {
     const aiResponse = await axios.post(
       `${AI_SERVICE_URL}/internal/drugs/explain`,
       { drugName, question, patientContext: mergedContext.trim() || undefined },
-      { timeout: 15000 }
+      { timeout: 45000 }
     );
 
     // Log the interaction

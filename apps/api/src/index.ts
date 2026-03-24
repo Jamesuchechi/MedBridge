@@ -24,6 +24,11 @@ import drugRoutes from "./routes/drugs";
 import doctorRoutes from "./routes/doctors";
 import copilotRoutes from "./routes/copilot";
 import patientsRoutes from "./routes/patients";
+import notificationRoutes from "./routes/notifications";
+import referralRoutes from "./routes/referrals";
+import { DoctorsController } from "./controllers/doctors.controller";
+import { ConsultationsController } from "./controllers/consultations.controller";
+import { ConsentController } from "./controllers/consent.controller";
 import { analysisWorker } from "./workers/analysis.worker";
 
 const app = express();
@@ -51,6 +56,23 @@ app.use("/api/v1/drugs", drugRoutes);
 app.use("/api/v1/doctors", doctorRoutes);
 app.use("/api/v1/copilot", copilotRoutes);
 app.use("/api/v1/patients", patientsRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/referrals", referralRoutes);
+
+
+// --- DOCTORS ---
+app.get("/api/v1/doctors/search", (req, res) => DoctorsController.searchDoctors(req, res));
+app.get("/api/v1/doctors/:id", (req, res) => DoctorsController.getDoctorDetail(req, res));
+
+// --- CONSULTATIONS ---
+app.post("/api/v1/consultations", (req, res) => ConsultationsController.createRequest(req, res));
+app.get("/api/v1/consultations", (req, res) => ConsultationsController.listRequests(req, res));
+app.patch("/api/v1/consultations/:id/status", (req, res) => ConsultationsController.updateStatus(req, res));
+
+// --- CONSENT ---
+app.post("/api/v1/consent/grant", (req, res) => ConsentController.grantConsent(req, res));
+app.post("/api/v1/consent/revoke", (req, res) => ConsentController.revokeConsent(req, res));
+app.get("/api/v1/consent/doctors", (req, res) => ConsentController.listConsentedDoctors(req, res));
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });

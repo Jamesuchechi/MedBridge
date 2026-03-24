@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db, users, doctorProfiles, doctorVerificationAudit, clinicalCases } from "@medbridge/db";
-import { eq, and, desc, sql, ilike, or } from "drizzle-orm";
+import { eq, and, desc, sql, ilike, or, gt, gte } from "drizzle-orm";
 import { z } from "zod";
 import { validateMdcnFormat, checkMdcnDuplicate } from "../services/mdcn.service";
 import {
@@ -84,6 +84,60 @@ function formatDoctorProfile(profile: Record<string, unknown>) {
 /** GET /api/v1/doctors/specializations */
 export const getSpecializations = (_req: Request, res: Response) => {
   res.json(SPECIALIZATIONS);
+};
+
+/**
+ * Search doctors with filters
+ * GET /api/v1/doctors/search?query=...&specialty=...&state=...
+ */
+export const searchDoctors = async (req: Request, res: Response) => {
+  try {
+    const { query, specialty, state } = req.query;
+
+    const filters = [eq(doctorProfiles.verificationStatus, "approved")];
+
+    if (specialty && specialty !== "All Specialties") {
+      filters.push(eq(doctorProfiles.specialization, specialty as string));
+    }
+
+    if (state && state !== "All States") {
+      filters.push(eq(doctorProfiles.hospitalState, state as string));
+    }
+
+    const results = await db
+      .select({
+        id: doctorProfiles.id,
+        userId: doctorProfiles.userId,
+        fullName: doctorProfiles.fullName,
+        specialization: doctorProfiles.specialization,
+        subSpecialization: doctorProfiles.subSpecialization,
+        currentHospital: doctorProfiles.currentHospital,
+        hospitalState: doctorProfiles.hospitalState,
+        yearsExperience: doctorProfiles.yearsExperience,
+        bio: doctorProfiles.bio,
+        avatarUrl: users.avatarUrl,
+      })
+      .from(doctorProfiles)
+      .innerJoin(users, eq(doctorProfiles.userId, users.id))
+      .where(
+        and(
+          ...filters,
+          query 
+            ? or(
+                ilike(doctorProfiles.fullName, `%${query}%`),
+                ilike(doctorProfiles.currentHospital, `%${query}%`),
+                ilike(doctorProfiles.specialization, `%${query}%`)
+              )
+            : undefined
+        )
+      )
+      .limit(50);
+
+    res.json(results);
+  } catch (err) {
+    console.error("[SEARCH DOCTORS ERROR]:", err);
+    res.status(500).json({ error: "Failed to search doctors" });
+  }
 };
 
 /** POST /api/v1/doctors/register */
@@ -351,7 +405,7 @@ export const getQueueStats = async (_req: Request, res: Response) => {
     const [recent] = await db
       .select({ count: sql<number>`count(*)` })
       .from(doctorProfiles)
-      .where(sql`submitted_at > ${cutoff24h}`);
+      .where(gt(doctorProfiles.submittedAt, cutoff24h));
 
     res.json({
       pending:      Number(stats.pending),
@@ -506,7 +560,7 @@ export const getDoctorStats = async (req: Request, res: Response) => {
     const [todayRow] = await db
       .select({ count: sql<number>`count(*)` })
       .from(clinicalCases)
-      .where(and(eq(clinicalCases.doctorId, userId), sql`created_at >= ${today}`));
+      .where(and(eq(clinicalCases.doctorId, userId), gte(clinicalCases.createdAt, today)));
 
     // 3. Pending Reviews (Mocked for now or count of specific cases)
     const pendingReviews = 0; // Future improvement: track reviews
@@ -516,7 +570,7 @@ export const getDoctorStats = async (req: Request, res: Response) => {
     const [activeRow] = await db
       .select({ count: sql<number>`count(*)` })
       .from(clinicalCases)
-      .where(and(eq(clinicalCases.doctorId, userId), sql`created_at >= ${weekAgo}`));
+      .where(and(eq(clinicalCases.doctorId, userId), gte(clinicalCases.createdAt, weekAgo)));
 
     res.json({
       totalConsultations: Number(totalRow.count),
@@ -529,6 +583,20 @@ export const getDoctorStats = async (req: Request, res: Response) => {
     console.error("[GET DOCTOR STATS ERROR]:", err);
     res.status(500).json({ error: "Internal server error" });
   }
+};
+
+// ─── Controller Object (for index.ts) ─────────────────────────────────────────
+export const DoctorsController = {
+  getSpecializations,
+  registerDoctor,
+  getDoctorProfile,
+  updateDoctorProfile,
+  getVerificationQueue,
+  getQueueStats,
+  getDoctorDetail,
+  moderateDoctor,
+  getDoctorStats,
+  searchDoctors,
 };
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
