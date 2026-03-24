@@ -85,7 +85,7 @@ function getPasswordStrength(pw: string) {
   return { score, label: labels[score], key: keys[score] };
 }
 
-type Role = "patient" | "doctor" | "clinic";
+type Role = "PATIENT" | "CLINICIAN" | "CLINIC_ADMIN";
 
 function StepRole({ role, setRole, onNext }: {
   role: Role | null;
@@ -93,9 +93,9 @@ function StepRole({ role, setRole, onNext }: {
   onNext: () => void;
 }) {
   const roles = [
-    { key: "patient" as Role, label: "Patient", Icon: PatientIcon, desc: "Check symptoms and analyze docs" },
-    { key: "doctor" as Role, label: "Doctor", Icon: DoctorIcon, desc: "AI copilot and clinical tools" },
-    { key: "clinic" as Role, label: "Clinic", Icon: ClinicIcon, desc: "EMR and appointment management" },
+    { key: "PATIENT" as Role, label: "Patient", Icon: PatientIcon, desc: "Check symptoms and analyze docs" },
+    { key: "CLINICIAN" as Role, label: "Doctor", Icon: DoctorIcon, desc: "AI copilot and clinical tools" },
+    { key: "CLINIC_ADMIN" as Role, label: "Clinic", Icon: ClinicIcon, desc: "EMR and appointment management" },
   ];
 
   return (
@@ -203,7 +203,7 @@ function StepDetails({ role, onBack }: { role: Role; onBack: () => void }) {
       <div className="auth-form-header">
         <div className="auth-form-eyebrow">
           <div className="auth-form-eyebrow-dot" />
-          Step 2 of 2 · {role}
+          Step 2 of 2 · {role.toLowerCase()}
         </div>
         <h1>Create your<br />account</h1>
         <p>Already have one? <a href="/login">Sign in instead</a></p>
@@ -235,7 +235,7 @@ function StepDetails({ role, onBack }: { role: Role; onBack: () => void }) {
 
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="form-field">
-          <label className="form-label">{role === "clinic" ? "Clinic name" : "Full name"}</label>
+          <label className="form-label">{role === "CLINIC_ADMIN" ? "Clinic name" : "Full name"}</label>
           <div className="form-input-wrap">
             <div className="form-input-icon"><UserIcon /></div>
             <input

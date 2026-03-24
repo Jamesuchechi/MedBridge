@@ -519,6 +519,8 @@ interface AuthLayoutProps {
   quote?: { text: string; name: string; role: string; avatar: string };
 }
 
+import { Footer } from "../layout/Footer";
+
 export default function AuthLayout({
   children,
   headline = "Healthcare intelligence re-imagined",
@@ -633,6 +635,7 @@ export default function AuthLayout({
           </div>
         </div>
       </div>
+      <Footer />
     </>
   );
 }

@@ -20,10 +20,57 @@ interface ProfileData {
   vaccinations: string[];
   medicalHistory: string[];
   emergencyName: string; emergencyPhone: string; emergencyRelation: string;
+  // Doctor specific fields
+  fullName: string;
+  mdcnNumber: string;
+  specialization: string;
+  subSpecialization: string;
+  yearsExperience: string;
+  currentHospital: string;
+  hospitalState: string;
+  hospitalLga: string;
+  bio: string;
 }
 
 interface Allergy { id: string; substance: string; reaction: string; severity: "mild" | "moderate" | "severe"; }
 interface Medication { id: string; name: string; dose: string; frequency: string; }
+
+interface HealthProfileResponse {
+  firstName?: string;
+  lastName?: string;
+  dob?: string;
+  gender?: string;
+  phone?: string;
+  state?: string;
+  lga?: string;
+  bloodGroup?: string;
+  genotype?: string;
+  weight?: string;
+  height?: string;
+  chronicConditions?: string;
+  allergies?: string;
+  medications?: string;
+  familyHistory?: string;
+  vaccinations?: string;
+  medicalHistory?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
+  emergencyRelation?: string;
+}
+
+interface DoctorProfileResponse {
+  phone?: string;
+  fullName?: string;
+  mdcnNumber?: string;
+  specialization?: string;
+  subSpecialization?: string;
+  yearsExperience?: number | string;
+  currentHospital?: string;
+  hospitalState?: string;
+  hospitalLga?: string;
+  bio?: string;
+}
+
 
 const EMPTY_PROFILE: ProfileData = {
   firstName: "", lastName: "", dob: "", sex: "", phone: "", state: "", lga: "",
@@ -31,7 +78,15 @@ const EMPTY_PROFILE: ProfileData = {
   chronicConditions: [], allergies: [], medications: [], familyHistory: [],
   vaccinations: [], medicalHistory: [],
   emergencyName: "", emergencyPhone: "", emergencyRelation: "",
+  fullName: "", mdcnNumber: "", specialization: "", subSpecialization: "",
+  yearsExperience: "", currentHospital: "", hospitalState: "", hospitalLga: "", bio: "",
 };
+
+const SPECIALIZATIONS = [
+  "General Practice / Family Medicine", "Internal Medicine", "Paediatrics", "Obstetrics & Gynaecology",
+  "Surgery (General)", "Orthopaedic Surgery", "Cardiology", "Neurology", "Psychiatry", "Ophthalmology", "ENT",
+  "Dermatology", "Radiology", "Anaesthesia", "Emergency Medicine", "Infectious Disease", "Other"
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -56,6 +111,7 @@ const STEPS = [
   { id: 6, key: "vaccines",    label: "Vaccinations",  short: "Vaccines",  color: "#4ecdc4" },
   { id: 7, key: "history",     label: "Medical History",short: "History",   color: "#feca57" },
   { id: 8, key: "emergency",   label: "Emergency",     short: "SOS",       color: "#ff5c5c" },
+  { id: 9, key: "professional", label: "Professional",  short: "MD",        color: "#3d9bff", roleGate: ["CLINICIAN", "doctor"] },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -396,6 +452,46 @@ function StepEmergency({ data, set }: { data: ProfileData; set: (p: Partial<Prof
   );
 }
 
+function StepProfessional({ data, set }: { data: ProfileData; set: (p: Partial<ProfileData>) => void }) {
+  return (
+    <div className="hp-section">
+      <div className="hp-section-header">
+        <div className="hp-section-icon" style={{ background: "rgba(61,155,255,.12)", color: "var(--accent2)" }}><Ic.Shield /></div>
+        <div>
+          <div className="hp-section-title">Professional Identity</div>
+          <div className="hp-section-sub">Verified clinician credentials and specialization</div>
+        </div>
+      </div>
+      <div className="hp-grid hp-grid-2" style={{ marginBottom: 16 }}>
+        <div className="hp-field"><label className="hp-label">Professional full name</label><input className="hp-input" placeholder="Dr. Emeka Okonkwo" value={data.fullName} onChange={e => set({ fullName: e.target.value })} /></div>
+        <div className="hp-field"><label className="hp-label">MDCN registration number</label><input className="hp-input" placeholder="MD/12345/2024" value={data.mdcnNumber} onChange={e => set({ mdcnNumber: e.target.value })} /></div>
+      </div>
+      <div className="hp-grid hp-grid-2" style={{ marginBottom: 16 }}>
+        <div className="hp-field">
+          <label className="hp-label">Specialization</label>
+          <select className="hp-select" value={data.specialization} onChange={e => set({ specialization: e.target.value })}>
+            <option value="">Select</option>
+            {SPECIALIZATIONS.map(s => <option key={s}>{s}</option>)}
+          </select>
+        </div>
+        <div className="hp-field"><label className="hp-label">Years of experience</label><input className="hp-input" type="number" value={data.yearsExperience} onChange={e => set({ yearsExperience: e.target.value })} /></div>
+      </div>
+      <div className="hp-field" style={{ marginBottom: 16 }}>
+        <label className="hp-label">Current hospital / clinic</label>
+        <input className="hp-input" placeholder="Lagos University Teaching Hospital" value={data.currentHospital} onChange={e => set({ currentHospital: e.target.value })} />
+      </div>
+      <div className="hp-grid hp-grid-2" style={{ marginBottom: 16 }}>
+        <div className="hp-field"><label className="hp-label">State of practice</label><select className="hp-select" value={data.hospitalState} onChange={e => set({ hospitalState: e.target.value })}><option value="">Select</option>{NIGERIAN_STATES.map(s => <option key={s}>{s}</option>)}</select></div>
+        <div className="hp-field"><label className="hp-label">LGA</label><input className="hp-input" value={data.hospitalLga} onChange={e => set({ hospitalLga: e.target.value })} /></div>
+      </div>
+      <div className="hp-field">
+        <label className="hp-label">Professional bio</label>
+        <textarea className="hp-textarea" rows={3} placeholder="Briefly describe your clinical focus..." value={data.bio} onChange={e => set({ bio: e.target.value })} />
+      </div>
+    </div>
+  );
+}
+
 export default function HealthProfileSetup() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<ProfileData>(EMPTY_PROFILE);
@@ -409,6 +505,9 @@ export default function HealthProfileSetup() {
 
   const set = useCallback((patch: Partial<ProfileData>) => setData(prev => ({ ...prev, ...patch })), []);
 
+  const isDoctor = user?.user_metadata?.role === "CLINICIAN" || user?.user_metadata?.role === "doctor";
+  const filteredSteps = STEPS.filter(s => !s.roleGate || (isDoctor && s.roleGate.some(r => ["CLINICIAN", "doctor"].includes(r))));
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -419,35 +518,62 @@ export default function HealthProfileSetup() {
       setUser(user);
 
       try {
+        // 1. Fetch Health Profile
         const res = await fetch(`${API_URL}/api/v1/profile`, {
           headers: { "x-user-id": user.id }
         });
+        let hProfile = {};
         if (res.ok) {
-          const profile = await res.json();
-          const names = user.user_metadata?.full_name?.split(" ") || ["", ""];
-          setData({
-            firstName: names[0] || "",
-            lastName: names.slice(1).join(" ") || "",
-            dob: profile.dob || "",
-            sex: (profile.gender as ProfileData["sex"]) || "",
-            phone: profile.phone || "",
-            state: profile.state || "",
-            lga: profile.lga || "",
-            bloodType: profile.bloodGroup || "",
-            genotype: profile.genotype || "",
-            weight: profile.weight || "",
-            height: profile.height || "",
-            chronicConditions: JSON.parse(profile.chronicConditions || "[]"),
-            allergies: JSON.parse(profile.allergies || "[]"),
-            medications: JSON.parse(profile.medications || "[]"),
-            familyHistory: JSON.parse(profile.familyHistory || "[]"),
-            vaccinations: JSON.parse(profile.vaccinations || "[]"),
-            medicalHistory: JSON.parse(profile.medicalHistory || "[]"),
-            emergencyName: profile.emergencyName || "",
-            emergencyPhone: profile.emergencyPhone || "",
-            emergencyRelation: profile.emergencyRelation || "",
-          });
+          hProfile = await res.json();
         }
+
+        // 2. Fetch Doctor Profile if applicable
+        let dProfile: DoctorProfileResponse = {};
+
+        if (user.user_metadata?.role === "CLINICIAN" || user.user_metadata?.role === "doctor") {
+          try {
+            const dRes = await fetch(`${API_URL}/api/v1/doctors/me`, {
+              headers: { "x-user-id": user.id, "x-user-role": user.user_metadata?.role }
+            });
+            if (dRes.ok) dProfile = await dRes.json();
+          } catch (e) { console.error("Doc profile fetch fail", e); }
+        }
+
+        const names = user.user_metadata?.full_name?.split(" ") || ["", ""];
+        const p: HealthProfileResponse = hProfile;
+
+        setData({
+          firstName: p.firstName || names[0] || "",
+          lastName: p.lastName || names.slice(1).join(" ") || "",
+          dob: p.dob || "",
+          sex: (p.gender as ProfileData["sex"]) || "",
+          phone: p.phone || dProfile.phone || "",
+          state: p.state || "",
+          lga: p.lga || "",
+          bloodType: p.bloodGroup || "",
+          genotype: p.genotype || "",
+          weight: p.weight || "",
+          height: p.height || "",
+          chronicConditions: JSON.parse(p.chronicConditions || "[]"),
+          allergies: JSON.parse(p.allergies || "[]"),
+          medications: JSON.parse(p.medications || "[]"),
+          familyHistory: JSON.parse(p.familyHistory || "[]"),
+          vaccinations: JSON.parse(p.vaccinations || "[]"),
+          medicalHistory: JSON.parse(p.medicalHistory || "[]"),
+          emergencyName: p.emergencyName || "",
+          emergencyPhone: p.emergencyPhone || "",
+          emergencyRelation: p.emergencyRelation || "",
+          // Doctor fields
+          fullName: dProfile.fullName || user.user_metadata?.full_name || "",
+          mdcnNumber: dProfile.mdcnNumber || "",
+          specialization: dProfile.specialization || "",
+          subSpecialization: dProfile.subSpecialization || "",
+          yearsExperience: dProfile.yearsExperience?.toString() || "",
+          currentHospital: dProfile.currentHospital || "",
+          hospitalState: dProfile.hospitalState || "",
+          hospitalLga: dProfile.hospitalLga || "",
+          bio: dProfile.bio || "",
+        });
       } catch (err) {
         console.error("Failed to fetch profile:", err);
       } finally {
@@ -461,40 +587,53 @@ export default function HealthProfileSetup() {
     if (!user) return;
     setSaving(true);
     try {
-      // 1. Ensure user is synced locally
-      try {
-        await fetch(`${API_URL}/api/auth/sync`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: user.id,
-            email: user.email,
-            name: user.user_metadata?.full_name || user.user_metadata?.name,
-            role: user.user_metadata?.role || "PATIENT",
-          }),
-        });
-      } catch (syncErr) {
-        console.error("Sync error before profile save:", syncErr);
-      }
-
-      const res = await fetch(`${API_URL}/api/v1/profile`, {
+      // 1. Sync user
+      await fetch(`${API_URL}/api/auth/sync`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": user.id
-        },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.full_name || user.user_metadata?.name,
+          role: user.user_metadata?.role || "PATIENT",
+        }),
+      });
+
+      // 2. Save Health Profile
+      await fetch(`${API_URL}/api/v1/profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-user-id": user.id },
         body: JSON.stringify(data),
       });
-      if (res.ok) {
-        setSaved(true);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      } else {
-        const err = await res.json();
-        alert(`Failed to save: ${err.message || "Unknown error"}`);
+
+      // 3. Save Doctor Profile if clinician
+      if (isDoctor) {
+        await fetch(`${API_URL}/api/v1/doctors/me`, {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json", 
+            "x-user-id": user.id,
+            "x-user-role": user.user_metadata?.role
+          },
+          body: JSON.stringify({
+            fullName: data.fullName,
+            phone: data.phone,
+            mdcnNumber: data.mdcnNumber,
+            specialization: data.specialization,
+            yearsExperience: parseInt(data.yearsExperience, 10) || 0,
+            currentHospital: data.currentHospital,
+            hospitalState: data.hospitalState,
+            hospitalLga: data.hospitalLga,
+            bio: data.bio,
+          }),
+        });
       }
+
+      setSaved(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       console.error("Save error:", err);
-      alert("Network error while saving profile.");
+      alert("Error saving profile.");
     } finally {
       setSaving(false);
     }
@@ -510,6 +649,8 @@ export default function HealthProfileSetup() {
     );
   }
 
+  const currentStepObj = filteredSteps[step - 1];
+
   return (
     <>
       <style>{CSS}</style>
@@ -518,38 +659,43 @@ export default function HealthProfileSetup() {
           <div className="hp-success">
             <div className="hp-success-ring"><Ic.Check /></div>
             <h2>Profile saved!</h2>
-            <p>Your AfriDx intelligence is now calibrated to your personal health context.</p>
+            <p>Your {isDoctor ? "professional identity" : "health profile"} is now updated.</p>
             <button className="hp-btn hp-btn-primary" onClick={() => window.location.assign("/dashboard")}>Back to Dashboard</button>
           </div>
         ) : (
           <>
             <div className="hp-header">
-              <div className="hp-eyebrow"><div className="hp-eyebrow-dot" /> Phase 2.4</div>
-              <h1 className="hp-title">Build your <span>health profile</span></h1>
-              <p className="hp-subtitle">Powers the AfriDx engine for personalized diagnostics.</p>
+              <div className="hp-eyebrow"><div className="hp-eyebrow-dot" /> Profile Settings</div>
+              <h1 className="hp-title">Build your <span>dashboard identity</span></h1>
+              <p className="hp-subtitle">{isDoctor ? "Manage your clinical credentials and professional bio." : "Powers the AfriDx engine for personalized diagnostics."}</p>
             </div>
             <div className="hp-completion-bar">
               <div className="hp-completion-pct">{pct}%</div>
-              <div className="hp-completion-text"><div className="hp-completion-title">Setup Progress</div><div className="hp-completion-sub">{8 - step} steps remaining</div></div>
+              <div className="hp-completion-text">
+                <div className="hp-completion-title">{isDoctor ? "Profile Status" : "Setup Progress"}</div>
+                <div className="hp-completion-sub">{filteredSteps.length - step} steps remaining</div>
+              </div>
             </div>
             <div className="hp-stepper">
-              {STEPS.map(s => (
-                <button key={s.id} className={`hp-step ${s.id === step ? "active" : ""}`} style={{ "--step-color": s.color } as React.CSSProperties} onClick={() => setStep(s.id)}>
-                  <span className="hp-step-num">{s.id}</span><span className="hp-step-label">{s.short}</span>
+              {filteredSteps.map((s, idx) => (
+                <button key={s.id} className={`hp-step ${idx + 1 === step ? "active" : ""}`} style={{ "--step-color": s.color } as React.CSSProperties} onClick={() => setStep(idx + 1)}>
+                  <span className="hp-step-num">{idx + 1}</span><span className="hp-step-label">{s.short}</span>
                 </button>
               ))}
             </div>
-            {step === 1 && <StepPersonal data={data} set={set} />}
-            {step === 2 && <StepClinical data={data} set={set} />}
-            {step === 3 && <StepConditions data={data} set={set} />}
-            {step === 4 && <StepMedications data={data} set={set} />}
-            {step === 5 && <StepFamily data={data} set={set} />}
-            {step === 6 && <StepVaccinations data={data} set={set} />}
-            {step === 7 && <StepHistory data={data} set={set} />}
-            {step === 8 && <StepEmergency data={data} set={set} />}
+            {currentStepObj?.key === "personal" && <StepPersonal data={data} set={set} />}
+            {currentStepObj?.key === "clinical" && <StepClinical data={data} set={set} />}
+            {currentStepObj?.key === "conditions" && <StepConditions data={data} set={set} />}
+            {currentStepObj?.key === "medications" && <StepMedications data={data} set={set} />}
+            {currentStepObj?.key === "family" && <StepFamily data={data} set={set} />}
+            {currentStepObj?.key === "vaccines" && <StepVaccinations data={data} set={set} />}
+            {currentStepObj?.key === "history" && <StepHistory data={data} set={set} />}
+            {currentStepObj?.key === "emergency" && <StepEmergency data={data} set={set} />}
+            {currentStepObj?.key === "professional" && <StepProfessional data={data} set={set} />}
+            
             <div className="hp-nav">
               <button disabled={step === 1} className="hp-btn hp-btn-ghost" onClick={() => setStep(step - 1)}>Back</button>
-              {step < 8 ? <button className="hp-btn hp-btn-primary" onClick={() => setStep(step + 1)}>Continue</button> : <button className="hp-btn hp-btn-primary" onClick={handleSave} disabled={saving}>{saving ? <div className="hp-spinner" /> : "Save Profile"}</button>}
+              {step < filteredSteps.length ? <button className="hp-btn hp-btn-primary" onClick={() => setStep(step + 1)}>Continue</button> : <button className="hp-btn hp-btn-primary" onClick={handleSave} disabled={saving}>{saving ? <div className="hp-spinner" /> : "Save Profile"}</button>}
             </div>
           </>
         )}

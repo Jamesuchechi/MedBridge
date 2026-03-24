@@ -70,11 +70,11 @@ const adminActionSchema = z.object({
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function formatDoctorProfile(profile: any) {
+function formatDoctorProfile(profile: Record<string, unknown>) {
   return {
     ...profile,
-    languages:         typeof profile.languages === 'string' ? JSON.parse(profile.languages || '["English"]') : profile.languages,
-    consultationTypes: typeof profile.consultationTypes === 'string' ? JSON.parse(profile.consultationTypes || '["In-person"]') : profile.consultationTypes,
+    languages:         typeof profile['languages'] === 'string' ? JSON.parse((profile['languages'] as string) || '["English"]') : profile['languages'],
+    consultationTypes: typeof profile['consultationTypes'] === 'string' ? JSON.parse((profile['consultationTypes'] as string) || '["In-person"]') : profile['consultationTypes'],
   };
 }
 
@@ -189,7 +189,7 @@ export const registerDoctor = async (req: Request, res: Response) => {
       message: "Application submitted successfully. You will receive an email confirmation shortly.",
       profile: formatDoctorProfile(profile),
     });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("[REGISTER DOCTOR]:", err);
     res.status(500).json({ error: "Failed to submit application" });
   }
@@ -212,7 +212,7 @@ export const getDoctorProfile = async (req: Request, res: Response) => {
     }
 
     res.json(formatDoctorProfile(profile));
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("[GET DOCTOR PROFILE]:", err);
     res.status(500).json({ error: "Internal server error" });
   }
@@ -239,7 +239,7 @@ export const updateDoctorProfile = async (req: Request, res: Response) => {
       ? ["bio", "phone", "consultationTypes", "currentHospital", "hospitalState", "hospitalLga"]
       : Object.keys(req.body);
 
-    const updateData: Record<string, any> = { updatedAt: new Date() };
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
         updateData[field] = Array.isArray(req.body[field])
@@ -498,7 +498,13 @@ async function logAudit(
 }
 
 async function notifyOnSubmission(
-  profile: any,
+  profile: {
+    id: string;
+    fullName: string;
+    mdcnNumber: string;
+    specialization: string;
+    [key: string]: unknown;
+  },
   req: Request
 ) {
   const userId = req.headers["x-user-id"] as string;
@@ -507,7 +513,7 @@ async function notifyOnSubmission(
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
-    .catch(() => [null] as any[]);
+    .catch(() => [] as { email: string }[]);
 
   if (user?.email) {
     await sendSubmissionConfirmation({

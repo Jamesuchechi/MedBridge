@@ -8,6 +8,9 @@ export const roleEnum = pgEnum("role", [
   "SUPER_ADMIN",
 ]);
 
+export type UserRole = (typeof roleEnum.enumValues)[number];
+
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").unique().notNull(),
@@ -217,4 +220,19 @@ export const doctorVerificationAudit = pgTable("doctor_verification_audit", {
   newStatus: text("new_status"),
   note: text("note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const clinicalCases = pgTable("clinical_cases", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  doctorId: uuid("doctor_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  patientId: uuid("patient_id").references(() => users.id, { onDelete: "set null" }), // Optional link to a registered patient
+  patientName: text("patient_name").notNull(),
+  patientAge: text("patient_age").notNull(),
+  patientSex: text("patient_sex").notNull(),
+  chiefComplaint: text("chief_complaint").notNull(),
+  vitals: text("vitals"), // JSON string
+  analysis: text("analysis").notNull(), // AI JSON response
+  soapNote: text("soap_note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

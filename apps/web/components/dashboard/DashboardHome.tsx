@@ -74,7 +74,7 @@ export function DashboardHome({ user }: { user: User }) {
   const h = new Date().getHours();
   const part = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   const first = user.name.split(" ")[0];
-  const isDoctor = user.role === "doctor" || user.role === "CLINICIAN";
+  const isDoctor = ["doctor", "CLINICIAN"].includes(user.role);
 
   const stats = isDoctor ? DOCTOR_STATS : PATIENT_STATS;
 

@@ -122,6 +122,7 @@ describe("GET /api/v1/pharmacies/geocode", () => {
 describe("POST /api/v1/pharmacies/report-availability", () => {
     beforeEach(() => {
         // Mock DB to return a pharmacy for validation
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { db } = require("@medbridge/db");
         db.select.mockReturnThis();
         db.from.mockReturnThis();

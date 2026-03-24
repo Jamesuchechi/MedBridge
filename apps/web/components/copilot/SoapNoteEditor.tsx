@@ -8,11 +8,13 @@ import { GlassCard } from "@/components/ui/GlassCard";
 export default function SoapNoteEditor({ 
   note, 
   onBack, 
-  onSave 
+  onSave,
+  isSaving = false
 }: { 
   note: string;
   onBack: () => void;
   onSave: (editedNote: string) => void;
+  isSaving?: boolean;
 }) {
   const [editedNote, setEditedNote] = useState(note);
   const [copied, setCopied] = useState(false);
@@ -24,10 +26,10 @@ export default function SoapNoteEditor({
   };
 
   return (
-    <div className="soap-editor-container" style={{ display: 'flex', gap: 24 }}>
+    <div className="soap-editor-container">
       
       {/* ── Main Editor ────────────────────────────────────────────── */}
-      <div style={{ flex: 1.5 }}>
+      <div className="editor-main-col">
         <GlassCard className="editor-card">
           <div className="editor-header">
             <h3 className="section-title">Clinical Note (SOAP)</h3>
@@ -48,15 +50,15 @@ export default function SoapNoteEditor({
             <button className="back-link" onClick={onBack}>
               ← Back to Analysis
             </button>
-            <button className="save-btn" onClick={() => onSave(editedNote)}>
-              Save to Patient Record
+            <button className="save-btn" onClick={() => onSave(editedNote)} disabled={isSaving}>
+              {isSaving ? <div className="loading-spinner-tiny" /> : "Save to Patient Record"}
             </button>
           </div>
         </GlassCard>
       </div>
 
       {/* ── Sidebar Guide ──────────────────────────────────────────── */}
-      <div style={{ flex: 1 }}>
+      <div className="editor-side-col">
         <GlassCard className="guide-card">
           <h4 className="guide-title">SOAP Guide</h4>
           <div className="guide-item">
@@ -78,94 +80,145 @@ export default function SoapNoteEditor({
         </GlassCard>
         
         <div style={{ marginTop: 20, padding: '0 10px' }}>
-          <p style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
             Note: Saving this will append the note to the patient's digital health record and link it to this encounter.
           </p>
         </div>
       </div>
 
       <style jsx>{`
-        .editor-card { padding: 24px; }
-        .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .soap-editor-container { 
+          display: flex; 
+          flex-wrap: wrap;
+          gap: 24px; 
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .editor-main-col {
+          flex: 1 1 500px;
+          min-width: 0;
+        }
+        .editor-side-col {
+          flex: 1 1 300px;
+          min-width: 0;
+        }
+        .editor-card { padding: 28px; border-radius: 20px; box-sizing: border-box; }
+        .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
         .section-title { 
-          font-family: 'Syne', sans-serif; 
-          font-size: 16px; 
-          font-weight: 700; 
+          font-family: var(--font-syne), sans-serif; 
+          font-size: 15px; 
+          font-weight: 800; 
           margin: 0;
-          color: var(--accent2, #3d9bff);
+          color: var(--accent-secondary, #3d9bff);
           text-transform: uppercase;
+          letter-spacing: 1px;
         }
         
         .copy-btn {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          color: var(--text2);
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 12px;
-          font-weight: 600;
+          background: var(--bg-card);
+          border: 1px solid var(--glass-border);
+          color: var(--text-secondary);
+          padding: 8px 16px;
+          border-radius: 10px;
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
           cursor: pointer;
           transition: all 0.2s;
         }
-        .copy-btn:hover { background: rgba(255,255,255,0.08); border-color: var(--accent2); }
+        .copy-btn:hover { background: var(--bg-card-hover); border-color: var(--accent-secondary); color: var(--text-primary); }
         
         .soap-textarea {
           width: 100%;
-          background: rgba(0,0,0,0.2);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 12px;
-          padding: 20px;
-          color: var(--text);
-          font-family: 'Inter', sans-serif;
+          background: var(--bg-card);
+          border: 1px solid var(--glass-border);
+          border-radius: 16px;
+          padding: 24px;
+          color: var(--text-primary);
+          font-family: 'DM Mono', monospace;
           font-size: 14px;
-          line-height: 1.7;
-          resize: none;
+          line-height: 1.8;
+          resize: vertical;
+          min-height: 500px;
           outline: none;
-          transition: all 0.2s;
+          transition: all 0.25s ease;
           box-sizing: border-box;
+          box-shadow: inset 0 4px 12px rgba(0,0,0,0.05);
         }
-        .soap-textarea:focus { border-color: var(--accent2); background: rgba(0,0,0,0.25); }
+        .soap-textarea:focus { 
+          border-color: var(--accent-secondary); 
+          background: var(--bg-card-hover); 
+          box-shadow: inset 0 4px 12px rgba(0,0,0,0.1), 0 0 0 4px rgba(61,155,255,0.05);
+        }
         
-        .editor-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+        .editor-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; gap: 20px; flex-wrap: wrap; }
         .back-link { 
           background: none; 
           border: none; 
-          color: var(--text3); 
+          color: var(--text-muted); 
           font-size: 14px; 
+          font-weight: 600;
           cursor: pointer; 
-          transition: color 0.2s;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
-        .back-link:hover { color: var(--text2); }
+        .back-link:hover { color: var(--text-secondary); transform: translateX(-4px); }
         
         .save-btn {
-          background: linear-gradient(135deg, #3d9bff, #1a73e8);
-          color: white;
+          background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+          color: #03050a;
           border: none;
-          padding: 12px 28px;
-          border-radius: 10px;
-          font-size: 14px;
-          font-weight: 700;
+          padding: 14px 32px;
+          border-radius: 12px;
+          font-size: 15px;
+          font-weight: 800;
           cursor: pointer;
-          box-shadow: 0 4px 15px rgba(61,155,255,0.2);
-          transition: all 0.2s;
+          box-shadow: 0 8px 20px rgba(0, 229, 160, 0.15);
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          font-family: var(--font-syne), sans-serif;
+          box-sizing: border-box;
         }
-        .save-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(61,155,255,0.3); }
+        .save-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0, 229, 160, 0.25); filter: brightness(1.1); }
+        .save-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
         
-        .guide-card { padding: 24px; }
+        .loading-spinner-tiny {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(0,0,0,0.1);
+          border-top-color: var(--text-primary);
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+          margin: 0 auto;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .guide-card { padding: 28px; border-radius: 20px; box-sizing: border-box; }
         .guide-title { 
-          font-family: 'Syne', sans-serif; 
-          font-size: 14px; 
+          font-family: var(--font-syne, sans-serif); 
+          font-size: 13px; 
           font-weight: 800; 
-          color: var(--text); 
-          margin-bottom: 20px;
+          color: var(--text-primary); 
+          margin-bottom: 24px;
           text-transform: uppercase;
+          letter-spacing: 1px;
         }
-        .guide-item { margin-bottom: 20px; }
-        .guide-item strong { display: block; font-size: 12px; color: var(--accent2); margin-bottom: 4px; }
-        .guide-item p { font-size: 12px; color: var(--text2); line-height: 1.6; margin: 0; }
+        .guide-item { margin-bottom: 24px; }
+        .guide-item:last-child { margin-bottom: 0; }
+        .guide-item strong { display: block; font-size: 11px; color: var(--accent-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .guide-item p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 0; }
         
-        @media (max-width: 900px) {
-          .soap-editor-container { flex-direction: column; }
+        @media (max-width: 600px) {
+          .editor-card, .guide-card { padding: 20px; }
+          .editor-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+          .copy-btn { width: 100%; text-align: center; }
+          .editor-footer { flex-direction: column-reverse; align-items: stretch; }
+          .save-btn { width: 100%; text-align: center; }
+          .back-link { justify-content: center; padding: 12px; }
+          .editor-main-col, .editor-side-col { flex: 1 1 100%; }
         }
       `}</style>
     </div>

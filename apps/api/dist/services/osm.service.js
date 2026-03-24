@@ -182,11 +182,16 @@ async function searchPharmaciesByName(query, state) {
             }
         }
         catch (err) {
-            if (err.response?.status === 429) {
-                console.error("[OSM SERVICE]: Nominatim rate limit hit (429). Stopping retries.");
-                break;
+            if (axios_1.default.isAxiosError(err)) {
+                if (err.response?.status === 429) {
+                    console.error("[OSM SERVICE]: Nominatim rate limit hit (429). Stopping retries.");
+                    break;
+                }
+                console.error(`[OSM SERVICE]: searchPharmaciesByName error for query "${qStr}":`, err.message);
             }
-            console.error(`[OSM SERVICE]: searchPharmaciesByName error for query "${qStr}":`, err);
+            else {
+                console.error(`[OSM SERVICE]: searchPharmaciesByName error for query "${qStr}":`, err instanceof Error ? err.message : "An unknown error occurred");
+            }
         }
     }
     return [];

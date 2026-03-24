@@ -16,6 +16,22 @@ const googleClient = axios.create({
   timeout: 10000,
 });
 
+interface GooglePlaceResult {
+  place_id: string;
+  name?: string;
+  formatted_address?: string;
+  vicinity?: string;
+  geometry: {
+    location: {
+      lat: number;
+      lng: number;
+    };
+  };
+  opening_hours?: {
+    open_now?: boolean;
+  };
+}
+
 /**
  * Search for pharmacies nearby given coordinates
  */
@@ -46,8 +62,8 @@ export async function searchPharmaciesNearby(
       return [];
     }
 
-    return (results || []).map((place: any) => transformGooglePlace(place));
-  } catch (err) {
+    return (results || []).map((place: GooglePlaceResult) => transformGooglePlace(place));
+  } catch (err: unknown) {
     console.error("[GOOGLE MAPS]: Nearby search error:", err);
     return [];
   }
@@ -82,8 +98,8 @@ export async function searchPharmaciesByName(
       return [];
     }
 
-    return (results || []).map((place: any) => transformGooglePlace(place));
-  } catch (err) {
+    return (results || []).map((place: GooglePlaceResult) => transformGooglePlace(place));
+  } catch (err: unknown) {
     console.error("[GOOGLE MAPS]: Text search error:", err);
     return [];
   }
@@ -140,7 +156,7 @@ export async function geocodeLocation(
       state,
       lga,
     };
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("[GOOGLE MAPS]: Geocoding error:", err);
     return null;
   }
@@ -149,7 +165,7 @@ export async function geocodeLocation(
 /**
  * Transform a Google Place result into the OsmPharmacy format
  */
-function transformGooglePlace(place: any): OsmPharmacy {
+function transformGooglePlace(place: GooglePlaceResult): OsmPharmacy {
   // Extract state if possible from address
   const addressParts = place.formatted_address?.split(",") || [];
   const state = addressParts.length > 2 ? addressParts[addressParts.length - 2].trim() : "Nigeria";

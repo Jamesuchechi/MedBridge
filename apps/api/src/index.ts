@@ -11,7 +11,8 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
-import { db, users, healthProfiles } from "@medbridge/db";
+import { db, users, healthProfiles, UserRole } from "@medbridge/db";
+
 import { eq } from "drizzle-orm";
 
 import { initSocket } from "./lib/socket";
@@ -22,6 +23,7 @@ import pharmaciesRoutes from "./routes/pharmacies";
 import drugRoutes from "./routes/drugs";
 import doctorRoutes from "./routes/doctors";
 import copilotRoutes from "./routes/copilot";
+import patientsRoutes from "./routes/patients";
 import { analysisWorker } from "./workers/analysis.worker";
 
 const app = express();
@@ -48,6 +50,7 @@ app.use("/api/v1/pharmacies", pharmaciesRoutes);
 app.use("/api/v1/drugs", drugRoutes);
 app.use("/api/v1/doctors", doctorRoutes);
 app.use("/api/v1/copilot", copilotRoutes);
+app.use("/api/v1/patients", patientsRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
@@ -70,6 +73,18 @@ app.post("/api/auth/sync", async (req: Request, res: Response) => {
   }
 
   try {
+    // Helper to map role from auth metadata to DB enum
+    const mapUserRole = (rawRole?: string): UserRole => {
+      const r = (rawRole || "").toUpperCase();
+      if (r === "DOCTOR") return "CLINICIAN";
+      if (r === "CLINIC") return "CLINIC_ADMIN";
+      const valid = ["PATIENT", "CLINICIAN", "CLINIC_STAFF", "CLINIC_ADMIN", "SUPER_ADMIN"] as const;
+      return (valid as readonly string[]).includes(r) ? (r as UserRole) : "PATIENT";
+    };
+
+
+    const finalRole = mapUserRole(role);
+
     // 1. Upsert user
     const [user] = await db
       .insert(users)
@@ -77,7 +92,7 @@ app.post("/api/auth/sync", async (req: Request, res: Response) => {
         id,
         email,
         name: name || null,
-        role: (role?.toUpperCase() as "PATIENT" | "CLINICIAN" | "CLINIC_STAFF" | "CLINIC_ADMIN" | "SUPER_ADMIN") || "PATIENT",
+        role: finalRole,
         isVerified: true,
         updatedAt: new Date(),
       })
@@ -85,7 +100,7 @@ app.post("/api/auth/sync", async (req: Request, res: Response) => {
         target: users.id,
         set: {
           name: name || null,
-          role: (role?.toUpperCase() as "PATIENT" | "CLINICIAN" | "CLINIC_STAFF" | "CLINIC_ADMIN" | "SUPER_ADMIN") || "PATIENT",
+          role: finalRole,
           updatedAt: new Date(),
         },
       })

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.doctorVerificationAudit = exports.doctorProfiles = exports.moderationAuditLog = exports.drugPriceReports = exports.drugAvailabilityReports = exports.pharmacies = exports.drugQueryLogs = exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
+exports.clinicalCases = exports.doctorVerificationAudit = exports.doctorProfiles = exports.moderationAuditLog = exports.drugPriceReports = exports.drugAvailabilityReports = exports.pharmacies = exports.drugQueryLogs = exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 exports.roleEnum = (0, pg_core_1.pgEnum)("role", [
     "PATIENT",
@@ -205,4 +205,18 @@ exports.doctorVerificationAudit = (0, pg_core_1.pgTable)("doctor_verification_au
     newStatus: (0, pg_core_1.text)("new_status"),
     note: (0, pg_core_1.text)("note"),
     createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+});
+exports.clinicalCases = (0, pg_core_1.pgTable)("clinical_cases", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    doctorId: (0, pg_core_1.uuid)("doctor_id").notNull().references(() => exports.users.id, { onDelete: "cascade" }),
+    patientId: (0, pg_core_1.uuid)("patient_id").references(() => exports.users.id, { onDelete: "set null" }), // Optional link to a registered patient
+    patientName: (0, pg_core_1.text)("patient_name").notNull(),
+    patientAge: (0, pg_core_1.text)("patient_age").notNull(),
+    patientSex: (0, pg_core_1.text)("patient_sex").notNull(),
+    chiefComplaint: (0, pg_core_1.text)("chief_complaint").notNull(),
+    vitals: (0, pg_core_1.text)("vitals"), // JSON string
+    analysis: (0, pg_core_1.text)("analysis").notNull(), // AI JSON response
+    soapNote: (0, pg_core_1.text)("soap_note"),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+    updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
 });

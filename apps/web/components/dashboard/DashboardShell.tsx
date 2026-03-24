@@ -10,10 +10,10 @@ import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { DashboardHome } from "./DashboardHome";
 import { useAuthStore } from "@/store/auth.store";
-import DashboardFooter from "@/components/layout/DashboardFooter";
+import { Footer } from "@/components/layout/Footer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type UserRole = "patient" | "doctor" | "clinic";
+type UserRole = "PATIENT" | "CLINICIAN" | "CLINIC_ADMIN" | "SUPER_ADMIN" | "patient" | "doctor" | "clinic";
 interface User {
   name: string;
   email: string;
@@ -162,19 +162,19 @@ const ALL_NAV: NavItem[] = [
   { id: "home",      label: "Home",            href: "/dashboard",           icon: Ic.Home },
   
   // Doctor/Clinician specific
-  { id: "copilot",   label: "Doctor Copilot",  href: "/dashboard/copilot",   icon: Ic.Activity, roleGate: ["doctor"], badge: "PRO" },
-  { id: "patients",  label: "My Patients",     href: "/dashboard/patients",  icon: Ic.Users, roleGate: ["doctor"] },
-  { id: "referrals", label: "Referrals",       href: "/dashboard/referrals", icon: Ic.Clipboard, roleGate: ["doctor"] },
+  { id: "copilot",   label: "Doctor Copilot",  href: "/dashboard/copilot",   icon: Ic.Activity, roleGate: ["doctor", "CLINICIAN"], badge: "PRO" },
+  { id: "patients",  label: "My Patients",     href: "/dashboard/patients",  icon: Ic.Users, roleGate: ["doctor", "CLINICIAN"] },
+  { id: "referrals", label: "Referrals",       href: "/dashboard/referrals", icon: Ic.Clipboard, roleGate: ["doctor", "CLINICIAN"] },
 
   // Admin specific
-  { id: "admin-queue", label: "Verification Queue", href: "/dashboard/admin/doctors/queue", icon: Ic.ShieldCheck, roleGate: ["clinic"] }, // 'clinic' role used for admin for now based on DashboardHome mapping or we can add "SUPER_ADMIN"
+  { id: "admin-queue", label: "Verification Queue", href: "/dashboard/admin/doctors/queue", icon: Ic.ShieldCheck, roleGate: ["clinic", "CLINIC_ADMIN", "SUPER_ADMIN"] },
 
   // Patient / Generic
-  { id: "symptoms",  label: "Symptom Checker", href: "/dashboard/symptoms",  icon: Ic.Activity, badge: "AI", roleGate: ["patient"] },
+  { id: "symptoms",  label: "Symptom Checker", href: "/dashboard/symptoms",  icon: Ic.Activity, badge: "AI", roleGate: ["patient", "PATIENT"] },
   { id: "documents", label: "Documents",        href: "/dashboard/documents", icon: Ic.FileText },
   { id: "drugs",     label: "Drug Intelligence",href: "/dashboard/drugs",     icon: Ic.Pill },
   { id: "community", label: "CommunityRx",      href: "/dashboard/community", icon: Ic.Map },
-  { id: "profile",   label: "Health Profile",   href: "/dashboard/profile",   icon: Ic.User, dividerBefore: true, roleGate: ["patient"] },
+  { id: "profile",   label: "My Profile",      href: "/dashboard/profile",   icon: Ic.User, dividerBefore: true },
   { id: "settings",  label: "Settings",          href: "/dashboard/settings",  icon: Ic.Settings, dividerBefore: true },
 ];
 
@@ -182,10 +182,14 @@ function navForRole(role: UserRole): NavItem[] {
   return ALL_NAV.filter(n => !n.roleGate || n.roleGate.includes(role));
 }
 
-const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> = {
-  patient: { label: "Patient",     color: "var(--accent)",  bg: "rgba(0,229,160,0.12)" },
-  doctor:  { label: "Doctor",      color: "var(--accent2)", bg: "rgba(61,155,255,0.12)" },
-  clinic:  { label: "Clinic Admin",color: "var(--accent3)", bg: "rgba(199,125,255,0.12)" },
+const ROLE_META: Record<string, { label: string; color: string; bg: string }> = {
+  patient:      { label: "Patient",     color: "var(--accent)",  bg: "rgba(0,229,160,0.12)" },
+  PATIENT:      { label: "Patient",     color: "var(--accent)",  bg: "rgba(0,229,160,0.12)" },
+  doctor:       { label: "Doctor",      color: "var(--accent2)", bg: "rgba(61,155,255,0.12)" },
+  CLINICIAN:    { label: "Doctor",      color: "var(--accent2)", bg: "rgba(61,155,255,0.12)" },
+  clinic:       { label: "Clinic Admin",color: "var(--accent3)", bg: "rgba(199,125,255,0.12)" },
+  CLINIC_ADMIN: { label: "Clinic Admin",color: "var(--accent3)", bg: "rgba(199,125,255,0.12)" },
+  SUPER_ADMIN:  { label: "Super Admin", color: "var(--accent3)", bg: "rgba(199,125,255,0.12)" },
 };
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -536,7 +540,7 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
                 className="sidebar-user-role"
                 style={{ background: ROLE_META[user.role].bg, color: ROLE_META[user.role].color }}
               >
-                {ROLE_META[user.role].label}
+                {ROLE_META[user.role]?.label || user.role}
               </div>
             </div>
           </div>
@@ -620,7 +624,7 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
           <div className="main-content-inner">
           {pathname === "/dashboard" ? <DashboardHome user={user} /> : children}
           </div>
-          <DashboardFooter />
+          <Footer />
         </main>
       </div>
 

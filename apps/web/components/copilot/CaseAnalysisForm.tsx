@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface CaseData {
+  patientName: string;
   patientAge: string;
   patientSex: string;
   isExistingPatient: boolean;
@@ -23,6 +24,7 @@ export interface CaseData {
 }
 
 const EMPTY_CASE: CaseData = {
+  patientName: "",
   patientAge: "",
   patientSex: "male",
   isExistingPatient: false,
@@ -72,8 +74,8 @@ export default function CaseAnalysisForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.patientAge || !formData.chiefComplaint) {
-      alert("Please enter patient age and chief complaint.");
+    if (!formData.patientName || !formData.patientAge || !formData.chiefComplaint) {
+      alert("Please enter patient name, age and chief complaint.");
       return;
     }
     onSubmit(formData);
@@ -81,14 +83,22 @@ export default function CaseAnalysisForm({
 
   return (
     <form onSubmit={handleSubmit} className="case-form">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div className="form-main-grid">
         
         {/* Step 1: Patient & Vitals */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div className="form-column">
           <GlassCard className="form-section">
             <h3 className="section-title">Patient Profile</h3>
-            <div className="field-row" style={{ display: 'flex', gap: 16 }}>
-              <div className="field" style={{ flex: 1 }}>
+            <div className="field" style={{ marginBottom: 16 }}>
+              <label>Patient Full Name</label>
+              <input 
+                value={formData.patientName} 
+                onChange={e => setFormData({ ...formData, patientName: e.target.value })}
+                placeholder="e.g. John Doe"
+              />
+            </div>
+            <div className="field-row">
+              <div className="field">
                 <label>Age (Years)</label>
                 <input 
                   type="number" 
@@ -97,7 +107,7 @@ export default function CaseAnalysisForm({
                   placeholder="e.g. 45"
                 />
               </div>
-              <div className="field" style={{ flex: 1 }}>
+              <div className="field">
                 <label>Sex</label>
                 <select 
                   value={formData.patientSex} 
@@ -139,7 +149,7 @@ export default function CaseAnalysisForm({
         </div>
 
         {/* Step 2: Symptoms & History */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div className="form-column">
           <GlassCard className="form-section">
             <h3 className="section-title">Clinical Presentation</h3>
             <div className="field">
@@ -163,12 +173,14 @@ export default function CaseAnalysisForm({
 
           <GlassCard className="form-section">
             <h3 className="section-title">Physical Examination</h3>
-            <textarea 
-              rows={4}
-              value={formData.examFindings} 
-              onChange={e => setFormData({ ...formData, examFindings: e.target.value })}
-              placeholder="Head to toe / Systems findings..."
-            />
+            <div className="field">
+              <textarea 
+                rows={4}
+                value={formData.examFindings} 
+                onChange={e => setFormData({ ...formData, examFindings: e.target.value })}
+                placeholder="Head to toe / Systems findings..."
+              />
+            </div>
           </GlassCard>
         </div>
       </div>
@@ -177,36 +189,39 @@ export default function CaseAnalysisForm({
       <div style={{ marginTop: 24 }}>
         <GlassCard className="form-section">
           <h3 className="section-title">Review of Systems (ROS)</h3>
-        <div className="ros-container">
-          {ROS_CATEGORIES.map(cat => (
-            <div key={cat.id} className="ros-category">
-              <div className="ros-cat-label">{cat.label}</div>
-              <div className="ros-items">
-                {cat.items.map(item => (
-                  <button 
-                    key={item} 
-                    type="button"
-                    className={`ros-item ${formData.ros[item] ? 'active' : ''}`}
-                    onClick={() => toggleRos(item)}
-                  >
-                    {item}
-                  </button>
-                ))}
+          <div className="ros-container">
+            {ROS_CATEGORIES.map(cat => (
+              <div key={cat.id} className="ros-category">
+                <div className="ros-cat-label">{cat.label}</div>
+                <div className="ros-items">
+                  {cat.items.map(item => (
+                    <button 
+                      key={item} 
+                      type="button"
+                      className={`ros-item ${formData.ros[item] ? 'active' : ''}`}
+                      onClick={() => toggleRos(item)}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </GlassCard>
+            ))}
+          </div>
+        </GlassCard>
       </div>
 
-      <div style={{ marginTop: 32, display: 'flex', justifyContent: 'center' }}>
+      <div style={{ marginTop: 40, display: 'flex', justifyContent: 'center' }}>
         <button 
           type="submit" 
           disabled={loading}
           className="submit-btn"
         >
           {loading ? (
-            <span className="loading-spinner">Analyzing Clinical Data...</span>
+            <span className="loading-spinner">
+              <div className="spinner-dot" />
+              Analyzing Clinical Data...
+            </span>
           ) : (
             <>Run Case Analysis</>
           )}
@@ -214,82 +229,187 @@ export default function CaseAnalysisForm({
       </div>
 
       <style jsx>{`
-        .case-form { width: 100%; }
-        .form-section { padding: 24px; }
+        .case-form { 
+          width: 100%; 
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          box-sizing: border-box;
+        }
+        .form-main-grid { 
+          display: flex; 
+          flex-wrap: wrap;
+          gap: 24px; 
+          width: 100%;
+        }
+        .form-column { 
+          display: flex; 
+          flex-direction: column; 
+          gap: 24px; 
+          flex: 1 1 450px; /* Base width of 450px, but can grow and shrink */
+          min-width: 0; /* Important for flex items with text inputs */
+        }
+        .form-section { padding: 28px; border-radius: 20px; height: 100%; }
         .section-title { 
-          font-family: 'Syne', sans-serif; 
-          font-size: 16px; 
+          font-family: var(--font-syne, 'Syne'), sans-serif; 
+          font-size: 14px; 
+          font-weight: 800; 
+          margin-bottom: 24px;
+          color: var(--accent-secondary, #3d9bff);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .section-title::after {
+          content: '';
+          height: 1px;
+          flex: 1;
+          background: linear-gradient(to right, rgba(61, 155, 255, 0.2), transparent);
+        }
+        
+        .field-row { display: flex; flex-wrap: wrap; gap: 20px; }
+        .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; flex: 1 1 200px; }
+        .field:last-child { margin-bottom: 0; }
+        .field label { 
+          font-size: 11px; 
           font-weight: 700; 
-          margin-bottom: 20px;
-          color: var(--accent2, #3d9bff);
+          color: var(--text-muted); 
           text-transform: uppercase;
           letter-spacing: 0.5px;
+          padding-left: 4px;
         }
-        .field { display: flex; flexDirection: column; gap: 8px; margin-bottom: 16px; }
-        .field label { font-size: 12px; font-weight: 600; color: var(--text3); }
         .field input, .field select, .field textarea {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.08);
+          width: 100%;
+          background: var(--bg-card);
+          border: 1px solid var(--glass-border);
           border-radius: 12px;
-          padding: 12px 16px;
-          color: var(--text);
-          font-size: 14px;
+          padding: 14px 18px;
+          color: var(--text-primary);
+          font-size: 15px;
           outline: none;
-          transition: all 0.2s;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          box-sizing: border-box;
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .field input:hover, .field select:hover, .field textarea:hover {
+          background: var(--bg-card-hover);
+          border-color: var(--glass-border-hover);
         }
         .field input:focus, .field select:focus, .field textarea:focus {
-          border-color: var(--accent2, #3d9bff);
-          background: rgba(255,255,255,0.05);
+          border-color: var(--accent-secondary, #3d9bff);
+          background: var(--bg-card-hover);
+          box-shadow: 0 0 0 4px rgba(61, 155, 255, 0.1), inset 0 2px 4px rgba(0,0,0,0.05);
+          transform: translateY(-1px);
         }
+        
+        .field select option {
+          background-color: var(--bg-secondary);
+          color: var(--text-primary);
+          padding: 12px;
+        }
+        
         .vitals-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
           gap: 16px;
         }
+        @media (max-width: 480px) {
+          .vitals-grid {
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+          }
+        }
+        
         .ros-container {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-          gap: 20px;
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          gap: 24px;
         }
-        .ros-cat-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
-        .ros-items { display: flex; flex-wrap: wrap; gap: 6px; }
+        .ros-cat-label { 
+          font-size: 10px; 
+          font-weight: 800; 
+          text-transform: uppercase; 
+          color: var(--text-muted); 
+          margin-bottom: 12px;
+          letter-spacing: 1px;
+        }
+        .ros-items { display: flex; flex-wrap: wrap; gap: 8px; }
         .ros-item {
           font-size: 11px;
-          padding: 6px 10px;
-          border-radius: 8px;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.06);
-          color: var(--text2);
+          padding: 8px 12px;
+          border-radius: 10px;
+          background: var(--bg-card);
+          border: 1px solid var(--glass-border);
+          color: var(--text-secondary);
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
+          user-select: none;
         }
-        .ros-item:hover { background: rgba(255,255,255,0.07); }
+        .ros-item:hover { 
+          background: var(--bg-card-hover); 
+          transform: translateY(-1px);
+          border-color: var(--glass-border-hover);
+        }
         .ros-item.active {
-          background: rgba(61,155,255,0.15);
+          background: rgba(61, 155, 255, 0.1);
           border-color: #3d9bff;
           color: #3d9bff;
           font-weight: 600;
+          box-shadow: 0 0 15px rgba(61, 155, 255, 0.15);
         }
+        
         .submit-btn {
-          background: linear-gradient(135deg, #3d9bff, #1a73e8);
-          color: white;
+          background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+          color: #03050a;
           border: none;
-          padding: 16px 40px;
-          border-radius: 14px;
-          font-size: 16px;
-          font-weight: 700;
+          padding: 18px 56px;
+          border-radius: 16px;
+          font-size: 17px;
+          font-weight: 800;
           cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
-          box-shadow: 0 4px 20px rgba(61,155,255,0.3);
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          box-shadow: 0 10px 30px rgba(0, 229, 160, 0.2);
+          font-family: var(--font-syne, 'Syne'), sans-serif;
+          letter-spacing: 0.5px;
+          max-width: 100%;
         }
-        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(61,155,255,0.4); }
-        .submit-btn:active { transform: translateY(0); }
-        .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        .submit-btn:hover { 
+          transform: translateY(-3px) scale(1.02); 
+          box-shadow: 0 15px 40px rgba(0, 229, 160, 0.3);
+          filter: brightness(1.1);
+        }
+        .submit-btn:active { transform: translateY(0) scale(0.98); }
+        .submit-btn:disabled { 
+          opacity: 0.6; 
+          cursor: not-allowed; 
+          transform: none; 
+          filter: grayscale(0.5);
+        }
         
         .loading-spinner {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 14px;
+        }
+        .spinner-dot {
+          width: 8px;
+          height: 8px;
+          background: currentColor;
+          border-radius: 50%;
+          animation: pulseDot 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulseDot {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.5); opacity: 0.5; }
+        }
+
+        @media (max-width: 600px) {
+          .form-section { padding: 20px; }
+          .section-title { font-size: 13px; }
+          .ros-container { grid-template-columns: 1fr; }
+          .field { flex: 1 1 100%; }
         }
       `}</style>
     </form>

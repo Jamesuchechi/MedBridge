@@ -31,27 +31,36 @@ def apply_afridx_weighting(
     rainy = is_rainy_season()
     
     for condition in conditions:
-        name = condition["name"]
-        prob = condition["probability"]
+        # Support both 'name' (symptom checker) and 'diagnosis' (doctor copilot)
+        name = condition.get("name") or condition.get("diagnosis", "Unknown")
+        
+        # Support both 'probability' (int 0-100) and 'confidence' (float 0-1)
+        # We'll work with 0-100 internally for weighting logic
+        orig_prob = condition.get("probability")
+        if orig_prob is None:
+            conf = condition.get("confidence", 0)
+            prob = conf * 100
+        else:
+            prob = float(orig_prob)
+            
         adjusted = False
 
         # 1. Malaria weighting
         if "Malaria" in name:
-            weight = PREVALENCE_WEIGHTS["Malaria"]["base"]
             if rainy:
-                prob += PREVALENCE_WEIGHTS["Malaria"]["rainy_season"] * 10
+                prob += PREVALENCE_WEIGHTS["Malaria"]["rainy_season"] * 100
             else:
-                prob += PREVALENCE_WEIGHTS["Malaria"]["dry_season"] * 10
+                prob += PREVALENCE_WEIGHTS["Malaria"]["dry_season"] * 100
             adjusted = True
 
         # 2. Typhoid weighting
         if "Typhoid" in name:
-            prob += PREVALENCE_WEIGHTS["Typhoid fever"]["base"] * 5
+            prob += PREVALENCE_WEIGHTS["Typhoid fever"]["base"] * 10
             adjusted = True
 
         # 3. Sickle Cell intersection
         if genotype == "SS" or genotype == "SC":
-            has_trigger = any(s in symptoms for s in SICKLE_CELL_CRISIS_TRIGGERS)
+            has_trigger = any(s.lower() in " ".join(symptoms).lower() for s in SICKLE_CELL_CRISIS_TRIGGERS)
             if has_trigger and "Sickle Cell" in name:
                 prob += 30
                 adjusted = True
@@ -61,13 +70,20 @@ def apply_afridx_weighting(
 
         # 4. Lassa Fever / Yellow Fever (Location based)
         for cf in ["Lassa", "Yellow"]:
-            if cf in name and any(zone.lower() in location.lower() for zone in PREVALENCE_WEIGHTS[f"{cf} Fever"]["outbreak_zones"]):
-                prob += 15
+            if cf in name and any(zone.lower() in location.lower() for zone in PREVALENCE_WEIGHTS.get(f"{cf} Fever", {}).get("outbreak_zones", [])):
+                prob += 20
                 adjusted = True
 
-        # Clamp probability
-        condition["probability"] = min(99, max(1, round(prob)))
+        # Clamp and Write Back
+        final_prob = min(99, max(1, round(prob)))
+        
+        if "probability" in condition or orig_prob is not None:
+            condition["probability"] = final_prob
+        
+        if "confidence" in condition or "diagnosis" in condition:
+            condition["confidence"] = final_prob / 100.0
+            
         condition["afridxAdjusted"] = adjusted
 
-    # Sort by probability descending
-    return sorted(conditions, key=lambda x: x["probability"], reverse=True)
+    # Sort by probability/confidence descending
+    return sorted(conditions, key=lambda x: x.get("probability") or x.get("confidence", 0), reverse=True)

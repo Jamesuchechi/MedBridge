@@ -56,6 +56,9 @@ const symptoms_1 = __importDefault(require("./routes/symptoms"));
 const documents_1 = __importDefault(require("./routes/documents"));
 const pharmacies_1 = __importDefault(require("./routes/pharmacies"));
 const drugs_1 = __importDefault(require("./routes/drugs"));
+const doctors_1 = __importDefault(require("./routes/doctors"));
+const copilot_1 = __importDefault(require("./routes/copilot"));
+const patients_1 = __importDefault(require("./routes/patients"));
 const analysis_worker_1 = require("./workers/analysis.worker");
 const app = (0, express_1.default)();
 const port = process.env.PORT || 4000;
@@ -76,6 +79,9 @@ app.use("/api/v1/symptoms", symptoms_1.default);
 app.use("/api/v1/documents", documents_1.default);
 app.use("/api/v1/pharmacies", pharmacies_1.default);
 app.use("/api/v1/drugs", drugs_1.default);
+app.use("/api/v1/doctors", doctors_1.default);
+app.use("/api/v1/copilot", copilot_1.default);
+app.use("/api/v1/patients", patients_1.default);
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
@@ -94,6 +100,17 @@ app.post("/api/auth/sync", async (req, res) => {
         return res.status(400).json({ error: "Missing id or email" });
     }
     try {
+        // Helper to map role from auth metadata to DB enum
+        const mapUserRole = (rawRole) => {
+            const r = (rawRole || "").toUpperCase();
+            if (r === "DOCTOR")
+                return "CLINICIAN";
+            if (r === "CLINIC")
+                return "CLINIC_ADMIN";
+            const valid = ["PATIENT", "CLINICIAN", "CLINIC_STAFF", "CLINIC_ADMIN", "SUPER_ADMIN"];
+            return valid.includes(r) ? r : "PATIENT";
+        };
+        const finalRole = mapUserRole(role);
         // 1. Upsert user
         const [user] = await db_1.db
             .insert(db_1.users)
@@ -101,7 +118,7 @@ app.post("/api/auth/sync", async (req, res) => {
             id,
             email,
             name: name || null,
-            role: role?.toUpperCase() || "PATIENT",
+            role: finalRole,
             isVerified: true,
             updatedAt: new Date(),
         })
@@ -109,7 +126,7 @@ app.post("/api/auth/sync", async (req, res) => {
             target: db_1.users.id,
             set: {
                 name: name || null,
-                role: role?.toUpperCase() || "PATIENT",
+                role: finalRole,
                 updatedAt: new Date(),
             },
         })

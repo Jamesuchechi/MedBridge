@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { analyzeCase, generateSoapNote } from "../controllers/copilot.controller";
+import { analyzeCase, generateSoapNote, saveCase } from "../controllers/copilot.controller";
 import { requireVerifiedDoctor } from "../middleware/doctor.middleware";
 
 const router = Router();
@@ -14,5 +14,8 @@ router.post("/analyze", analyzeCase);
 
 // POST /api/v1/copilot/note
 router.post("/note", generateSoapNote);
+
+// POST /api/v1/copilot/save
+router.post("/save", saveCase);
 
 export default router;

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/auth.store";
 import CaseAnalysisForm, { CaseData } from "@/components/copilot/CaseAnalysisForm";
 import AnalysisResults, { AnalysisResponse } from "@/components/copilot/AnalysisResults";
 import SoapNoteEditor from "@/components/copilot/SoapNoteEditor";
@@ -10,37 +11,42 @@ type View = "form" | "results" | "note";
 
 export default function CopilotPage() {
   const [view, setView] = useState<View>("form");
+  const { user } = useAuthStore();
   const [caseData, setCaseData] = useState<CaseData | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [generatingNote, setGeneratingNote] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
 
   // ─── Handlers ───────────────────────────────────────────────────────────────
 
   const handleAnalyze = async (data: CaseData) => {
+    if (!user) return;
     setCaseData(data);
     setLoading(true);
     
     try {
-      const result = await api.post<AnalysisResponse>("/api/v1/copilot/analyze", data);
+      const result = await api.post<AnalysisResponse>("/api/v1/copilot/analyze", data, {
+        headers: {
+          "x-user-id": user.id,
+          "x-user-role": "CLINICIAN"
+        }
+      });
       setAnalysis(result);
       setView("results");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: unknown) {
-      const error = err as any;
-      console.error("Analysis failed:", error);
-      alert(error.message || "Failed to analyze case. Please try again.");
+      console.error("Analysis failed:", err);
+      const message = err instanceof Error ? err.message : "Failed to analyze case. Please try again.";
+      alert(message);
     } finally {
       setLoading(false);
     }
   };
 
-  const [generatingNote, setGeneratingNote] = useState(false);
-
   const handleEditNote = async () => {
-    if (!caseData || !analysis) return;
+    if (!caseData || !analysis || !user) return;
     
-    // Check if we already have a note in the analysis object
-    // (In case the backend pre-generated it or we already fetched it)
     if (analysis.soapNote) {
       setView("note");
       return;
@@ -51,17 +57,52 @@ export default function CopilotPage() {
       const result = await api.post<{ soapNote: string }>("/api/v1/copilot/note", {
         caseData,
         analysis
+      }, {
+        headers: {
+          "x-user-id": user.id,
+          "x-user-role": "CLINICIAN"
+        }
       });
       setAnalysis({ ...analysis, soapNote: result.soapNote });
       setView("note");
     } catch (err: unknown) {
-      const error = err as any;
-      console.error("SOAP generation failed:", error);
+      console.error("SOAP generation failed:", err);
       alert("Failed to generate clinical note.");
     } finally {
       setGeneratingNote(false);
     }
   };
+
+  const handleSaveNote = async (editedNote: string) => {
+    if (!caseData || !analysis || !user) return;
+    
+    setSavingNote(true);
+    try {
+      await api.post("/api/v1/copilot/save", {
+        patientName: caseData.patientName,
+        patientAge: caseData.patientAge,
+        patientSex: caseData.patientSex,
+        chiefComplaint: caseData.chiefComplaint,
+        vitals: caseData.vitals,
+        analysis: analysis,
+        soapNote: editedNote,
+      }, {
+        headers: {
+          "x-user-id": user.id,
+          "x-user-role": "CLINICIAN"
+        }
+      });
+      
+      alert("Clinical case saved successfully.");
+      window.location.assign("/dashboard/patients");
+    } catch (err: unknown) {
+      console.error("Save failed:", err);
+      alert("Failed to save clinical case.");
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
   const handleBackToResults = () => setView("results");
   const handleRestart = () => {
     if (confirm("Clear current case and start over?")) {
@@ -74,12 +115,12 @@ export default function CopilotPage() {
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="cp-container" style={{ padding: '0 0 40px 0' }}>
-      <header style={{ marginBottom: 32 }}>
-        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 32, fontWeight: 800, marginBottom: 8 }}>
-          Doctor <span style={{ color: 'var(--accent2, #3d9bff)' }}>Copilot</span>
+    <div className="cp-container">
+      <header className="cp-header">
+        <h1 className="cp-title">
+          Doctor <span className="cp-accent">Copilot</span>
         </h1>
-        <p style={{ color: 'var(--text2)', fontSize: 15 }}>
+        <p className="cp-subtitle">
           Advanced clinical intelligence for differential diagnosis and SOAP documentation.
         </p>
       </header>
@@ -105,13 +146,77 @@ export default function CopilotPage() {
         <SoapNoteEditor 
           note={analysis.soapNote} 
           onBack={handleBackToResults} 
-          onSave={() => alert("Note saved to patient records (Simulated)")} 
+          onSave={handleSaveNote}
+          isSaving={savingNote}
         />
       )}
       
-      <div style={{ marginTop: 40, opacity: 0.5, fontSize: 12, textAlign: 'center' }}>
+      <div className="cp-disclaimer">
         <p><strong>Disclaimer:</strong> This is an AI-powered clinical assistant. All suggestions must be reviewed by a licensed medical professional. MedBridge Copilot is not a substitute for clinical judgment.</p>
       </div>
+
+      <style jsx>{`
+        .cp-container {
+          padding: 0 0 60px 0;
+          width: 100%;
+          margin: 0 auto;
+          box-sizing: border-box;
+          color: var(--text-primary);
+        }
+        .cp-header {
+          margin-bottom: 48px;
+          padding: 0 24px;
+          box-sizing: border-box;
+        }
+        .cp-title {
+          font-family: var(--font-syne, 'Syne'), sans-serif;
+          font-size: clamp(28px, 5vw, 42px);
+          font-weight: 800;
+          margin-bottom: 12px;
+          letter-spacing: -1px;
+          line-height: 1.1;
+        }
+        .cp-accent {
+          background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .cp-subtitle {
+          color: var(--text-secondary);
+          font-size: clamp(14px, 2vw, 16px);
+          max-width: 600px;
+          line-height: 1.6;
+        }
+        .cp-disclaimer {
+          margin-top: 60px;
+          padding: 24px;
+          background: var(--bg-card);
+          border: 1px solid var(--glass-border);
+          border-radius: 16px;
+          color: var(--text-muted);
+          font-size: 13px;
+          text-align: center;
+          line-height: 1.6;
+          max-width: 800px;
+          margin-left: auto;
+          margin-right: auto;
+          box-sizing: border-box;
+        }
+        .cp-disclaimer strong {
+          color: var(--text-secondary);
+          text-transform: uppercase;
+          font-size: 11px;
+          letter-spacing: 1px;
+          display: block;
+          margin-bottom: 4px;
+        }
+
+        @media (max-width: 768px) {
+          .cp-container { padding: 0 16px 40px 16px; }
+          .cp-header { margin-bottom: 32px; text-align: center; padding: 0; }
+          .cp-subtitle { margin: 0 auto; }
+        }
+      `}</style>
     </div>
   );
 }
