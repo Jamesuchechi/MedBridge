@@ -1,130 +1,145 @@
 import { Request, Response } from "express";
-import { db, clinicalCases, patientDoctorConsent } from "@medbridge/db";
-import { eq, and, inArray, sql } from "drizzle-orm";
-import { ConsentController } from "./consent.controller";
+import { db, users, clinicPatients, patientClinicConsent } from "@medbridge/db";
+import { eq, and, or, sql, desc, ilike } from "drizzle-orm";
+import { RegistrationService } from "../services/registration.service";
+import { addImportJob } from "../queues/import.queue";
 
-interface SharedPatientCase {
-  id: string;
-  patientName: string;
-  patientAge: string;
-  patientSex: string;
-  chiefComplaint: string;
-  createdAt: Date;
-  isShared: boolean;
-}
+export class PatientsController {
+  /** Register a patient in the clinic. Links existing user or creates new one. */
+  static async registerPatient(req: Request, res: Response) {
+    const { clinicId } = req;
+    const { email, phone } = req.body;
 
-/**
- * GET /api/v1/patients
- * Returns cases handled by the doctor OR patients who have granted consent.
- */
-export const getMyPatients = async (req: Request, res: Response) => {
-  const doctorId = req.headers["x-user-id"] as string;
-  if (!doctorId) return res.status(401).json({ error: "Unauthorized" });
+    if (!clinicId) return res.status(403).json({ error: "Clinic access required." });
+    if (!email && !phone) return res.status(400).json({ error: "Email or phone required." });
 
-  try {
-    // 1. Get cases where doctor is the owner
-    const ownCases = await db
-      .select({
-        id: clinicalCases.id,
-        patientName: clinicalCases.patientName,
-        patientAge: clinicalCases.patientAge,
-        patientSex: clinicalCases.patientSex,
-        chiefComplaint: clinicalCases.chiefComplaint,
-        createdAt: clinicalCases.createdAt,
-        isShared: sql<boolean>`false`.as("is_shared"),
-      })
-      .from(clinicalCases)
-      .where(eq(clinicalCases.doctorId, doctorId));
+    try {
+      const user = await RegistrationService.performRegistration(clinicId, req.body);
+      return res.status(201).json({ 
+        message: "Patient processed successfully.",
+        patient: user 
+      });
 
-    // 2. Get clinic records for patients who granted consent to this doctor
-    const activeConsents = await db
-      .select({ patientId: patientDoctorConsent.patientId })
-      .from(patientDoctorConsent)
-      .where(
-        and(
-          eq(patientDoctorConsent.doctorId, doctorId),
-          eq(patientDoctorConsent.status, "active")
-        )
-      );
+    } catch (err) {
+      console.error("[registerPatient]:", err);
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
 
-    const patientIds = activeConsents.map(c => c.patientId);
+  /** List patients associated with the clinic. */
+  static async listPatients(req: Request, res: Response) {
+    const { clinicId } = req;
+    const query = req.query.q as string;
+    const page = parseInt(req.query.page as string || "1", 10);
+    const limit = 20;
+    const offset = (page - 1) * limit;
 
-    let sharedCases: SharedPatientCase[] = [];
-    if (patientIds.length > 0) {
-      sharedCases = await db
+    if (!clinicId) return res.status(403).json({ error: "Clinic access required." });
+
+    try {
+      const data = await db
         .select({
-          id: clinicalCases.id,
-          patientName: clinicalCases.patientName,
-          patientAge: clinicalCases.patientAge,
-          patientSex: clinicalCases.patientSex,
-          chiefComplaint: clinicalCases.chiefComplaint,
-          createdAt: clinicalCases.createdAt,
-          isShared: sql<boolean>`true`.as("is_shared"),
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          phone: users.phone,
+          status: clinicPatients.status,
+          createdAt: clinicPatients.createdAt,
         })
-        .from(clinicalCases)
+        .from(clinicPatients)
+        .innerJoin(users, eq(clinicPatients.patientId, users.id))
         .where(
           and(
-            inArray(clinicalCases.patientId, patientIds),
-            // Don't duplicate if doctor is already the owner
-            sql`${clinicalCases.doctorId} != ${doctorId}`
+            eq(clinicPatients.clinicId, clinicId),
+            query ? or(ilike(users.name, `%${query}%`), ilike(users.email, `%${query}%`)) : undefined
           )
-        );
-    }
+        )
+        .limit(limit)
+        .offset(offset)
+        .orderBy(desc(clinicPatients.createdAt));
 
-    const allCases = [...ownCases, ...sharedCases].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+      const [{ count }] = await db
+        .select({ count: sql`count(*)` })
+        .from(clinicPatients)
+        .where(eq(clinicPatients.clinicId, clinicId));
 
-    res.json(allCases);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[GET MY PATIENTS ERROR]:", msg);
-    res.status(500).json({ error: "Failed to fetch patients", message: msg });
-  }
-};
-
-/**
- * GET /api/v1/patients/:id
- * Get details of a specific case with consent check
- */
-export const getCaseDetail = async (req: Request, res: Response) => {
-  const doctorId = req.headers["x-user-id"] as string;
-  const { id } = req.params;
-
-  try {
-    const [caseData] = await db
-      .select()
-      .from(clinicalCases)
-      .where(eq(clinicalCases.id, id))
-      .limit(1);
-
-    if (!caseData) return res.status(404).json({ error: "Case not found" });
-
-    // Check ownership
-    if (caseData.doctorId === doctorId) {
-      return res.json({
-        ...caseData,
-        vitals: caseData.vitals ? JSON.parse(caseData.vitals) : {},
-        analysis: caseData.analysis ? JSON.parse(caseData.analysis) : {},
+      return res.status(200).json({
+        patients: data,
+        pagination: {
+          total: Number(count),
+          page,
+          pages: Math.ceil(Number(count) / limit),
+        },
       });
+    } catch (err) {
+      console.error("[listPatients]:", err);
+      return res.status(500).json({ error: "Failed to fetch patients." });
     }
-
-    // Check consent if requester is not owner
-    if (caseData.patientId) {
-      const hasConsent = await ConsentController.checkConsent(caseData.patientId, doctorId);
-      if (hasConsent) {
-        return res.json({
-          ...caseData,
-          vitals: caseData.vitals ? JSON.parse(caseData.vitals) : {},
-          analysis: caseData.analysis ? JSON.parse(caseData.analysis) : {},
-        });
-      }
-    }
-
-    return res.status(403).json({ error: "Access denied. Patient consent required." });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[GET CASE DETAIL ERROR]:", msg);
-    res.status(500).json({ error: "Failed to fetch case detail", message: msg });
   }
-};
+
+  /** Universal Import: Extracts patients from file and registers them in background. */
+  static async importPatients(req: Request, res: Response) {
+    const { clinicId } = req;
+    const file = req.file;
+
+    if (!clinicId) return res.status(403).json({ error: "Clinic access required." });
+    if (!file) return res.status(400).json({ error: "No file uploaded." });
+
+    try {
+      // Add job to background queue
+      await addImportJob({
+        clinicId,
+        fileBuffer: file.buffer.toString("base64"),
+        mimeType: file.mimetype,
+        filename: file.originalname,
+      });
+
+      return res.status(202).json({
+        message: "Import started in background. Patients will appear in the directory shortly.",
+        code: "IMPORT_QUEUED",
+      });
+    } catch (err) {
+      console.error("[importPatients]:", err);
+      return res.status(500).json({ error: "Failed to queue import." });
+    }
+  }
+
+  /** Get detailed patient view for clinic staff. */
+  static async getPatientDetail(req: Request, res: Response) {
+    const { clinicId } = req;
+    const { id: patientId } = req.params;
+
+    if (!clinicId) return res.status(403).json({ error: "Clinic access required." });
+
+    try {
+      // 1. Verify link
+      const link = await db.query.clinicPatients.findFirst({
+        where: and(eq(clinicPatients.clinicId, clinicId), eq(clinicPatients.patientId, patientId)),
+      });
+
+      if (!link) return res.status(404).json({ error: "Patient not found in this clinic." });
+
+      // 2. Fetch user and profile
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, patientId),
+        with: {
+          healthProfile: true,
+        }
+      });
+
+      // 3. Fetch consent status
+      const consent = await db.query.patientClinicConsent.findFirst({
+        where: and(eq(patientClinicConsent.clinicId, clinicId), eq(patientClinicConsent.patientId, patientId)),
+      });
+
+      return res.status(200).json({
+        ...user,
+        clinicLink: link,
+        consent,
+      });
+    } catch (err) {
+      console.error("[getPatientDetail]:", err);
+      return res.status(500).json({ error: "Failed to fetch patient details." });
+    }
+  }
+}

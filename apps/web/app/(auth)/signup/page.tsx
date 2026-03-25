@@ -193,8 +193,11 @@ function StepDetails({ role, onBack }: { role: Role; onBack: () => void }) {
       setLoading(false);
     } else {
       setError("");
-      // Success state: redirect to verify page with email context
-      window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+      if (role === "CLINIC_ADMIN") {
+        window.location.href = `/signup/clinic`;
+      } else {
+        window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+      }
     }
   };
 

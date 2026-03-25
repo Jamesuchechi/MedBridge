@@ -1,16 +1,18 @@
 import { Router } from "express";
-import { getMyPatients, getCaseDetail } from "../controllers/patients.controller";
-import { requireVerifiedDoctor } from "../middleware/doctor.middleware";
+import { PatientsController } from "../controllers/patients.controller";
+import { requireVerifiedClinic } from "../middleware/clinic.middleware";
+
+import multer from "multer";
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
-// All patient routes for doctors require verification
-router.use(requireVerifiedDoctor);
+// All patient management routes require clinic access and verification
+router.use(requireVerifiedClinic);
 
-// GET /api/v1/patients
-router.get("/", getMyPatients);
-
-// GET /api/v1/patients/:id
-router.get("/:id", getCaseDetail);
+router.get("/", PatientsController.listPatients);
+router.get("/:id", PatientsController.getPatientDetail);
+router.post("/register", PatientsController.registerPatient);
+router.post("/import", upload.single("file"), PatientsController.importPatients);
 
 export default router;

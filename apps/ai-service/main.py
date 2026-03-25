@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from routers import symptom, document, drug, pharmacy, copilot
+from routers import symptom, document, drug, pharmacy, copilot, import_extraction
 
 app = FastAPI(title="MedBridge AI Service")
 
@@ -24,6 +24,7 @@ app.include_router(document.router, prefix="/internal/document", tags=["document
 app.include_router(drug.router, prefix="/internal/drugs", tags=["drug"])
 app.include_router(pharmacy.router, prefix="/internal/pharmacy", tags=["pharmacy"])
 app.include_router(copilot.router, prefix="/internal/copilot", tags=["copilot"])
+app.include_router(import_extraction.router, prefix="/internal/import", tags=["import"])
 
 @app.get("/health")
 async def health_check():

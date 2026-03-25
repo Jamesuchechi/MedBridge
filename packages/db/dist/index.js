@@ -42,7 +42,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.db = void 0;
 const postgres_js_1 = require("drizzle-orm/postgres-js");
 const postgres_1 = __importDefault(require("postgres"));
-const schema = __importStar(require("./schema"));
+const schema = __importStar(require("./medbridge-schema"));
 if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is missing");
 }
@@ -55,4 +55,4 @@ const client = (0, postgres_1.default)(connectionString, {
     keep_alive: 5,
 });
 exports.db = (0, postgres_js_1.drizzle)(client, { schema });
-__exportStar(require("./schema"), exports);
+__exportStar(require("./medbridge-schema"), exports);

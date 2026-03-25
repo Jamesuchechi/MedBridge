@@ -1,24 +1,37 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.upsertProfile = exports.getProfile = void 0;
+exports.getProfileUploadUrl = exports.upsertProfile = exports.getProfile = void 0;
 const db_1 = require("@medbridge/db");
 const drizzle_orm_1 = require("drizzle-orm");
+const supabase_1 = require("../config/supabase");
+const BUCKET_NAME = process.env.SUPABASE_STORAGE_BUCKET || "avatars";
 const getProfile = async (req, res) => {
     const userId = req.headers["x-user-id"];
     if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
     }
     try {
-        const [profile] = await db_1.db
-            .select()
+        const [data] = await db_1.db
+            .select({
+            profile: db_1.healthProfiles,
+            user: {
+                avatarUrl: db_1.users.avatarUrl,
+                name: db_1.users.name,
+            }
+        })
             .from(db_1.healthProfiles)
+            .innerJoin(db_1.users, (0, drizzle_orm_1.eq)(db_1.healthProfiles.userId, db_1.users.id))
             .where((0, drizzle_orm_1.eq)(db_1.healthProfiles.userId, userId))
             .limit(1);
-        if (!profile) {
-            // Return 200 with null values so frontend can still render the form
-            return res.status(200).json({ userId });
+        if (!data) {
+            // Still need to check if user exists even if profile doesn't
+            const [u] = await db_1.db.select({ avatarUrl: db_1.users.avatarUrl }).from(db_1.users).where((0, drizzle_orm_1.eq)(db_1.users.id, userId)).limit(1);
+            return res.status(200).json({ userId, avatarUrl: u?.avatarUrl });
         }
-        res.status(200).json(profile);
+        res.status(200).json({
+            ...data.profile,
+            avatarUrl: data.user.avatarUrl,
+        });
     }
     catch (err) {
         console.error("[GET PROFILE ERROR]:", err);
@@ -82,3 +95,30 @@ const upsertProfile = async (req, res) => {
     }
 };
 exports.upsertProfile = upsertProfile;
+const getProfileUploadUrl = async (req, res) => {
+    const userId = req.headers["x-user-id"];
+    const { fileName, type } = req.query;
+    if (!userId)
+        return res.status(401).json({ error: "Unauthorized" });
+    if (!fileName || !type)
+        return res.status(400).json({ error: "fileName and type (avatar|cover) are required" });
+    const extension = fileName.split(".").pop();
+    const path = `${userId}/${type}.${extension}`;
+    try {
+        const { data, error } = await supabase_1.supabase.storage
+            .from(BUCKET_NAME)
+            .createSignedUploadUrl(path);
+        if (error)
+            throw error;
+        res.status(200).json({
+            uploadUrl: data.signedUrl,
+            fileUrl: `${process.env.SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${path}`,
+            path,
+        });
+    }
+    catch (err) {
+        console.error("[GET PROFILE UPLOAD URL ERROR]:", err);
+        res.status(500).json({ error: "Failed to generate upload URL", message: err instanceof Error ? err.message : String(err) });
+    }
+};
+exports.getProfileUploadUrl = getProfileUploadUrl;

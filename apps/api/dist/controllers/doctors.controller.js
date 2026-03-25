@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.moderateDoctor = exports.getDoctorDetail = exports.getQueueStats = exports.getVerificationQueue = exports.updateDoctorProfile = exports.getDoctorProfile = exports.registerDoctor = exports.getSpecializations = exports.SPECIALIZATIONS = void 0;
+exports.DoctorsController = exports.getDoctorStats = exports.moderateDoctor = exports.getDoctorDetail = exports.getQueueStats = exports.getVerificationQueue = exports.updateDoctorProfile = exports.getDoctorProfile = exports.registerDoctor = exports.searchDoctors = exports.getSpecializations = exports.SPECIALIZATIONS = void 0;
 const db_1 = require("@medbridge/db");
 const drizzle_orm_1 = require("drizzle-orm");
 const zod_1 = require("zod");
@@ -55,6 +55,7 @@ const registerSchema = zod_1.z.object({
     bio: zod_1.z.string().max(1000).optional(),
     languages: zod_1.z.array(zod_1.z.string()).min(1).default(["English"]),
     consultationTypes: zod_1.z.array(zod_1.z.enum(["In-person", "Telemedicine", "Both"])).min(1).default(["In-person"]),
+    coverUrl: zod_1.z.string().url().optional(),
 });
 const adminActionSchema = zod_1.z.object({
     action: zod_1.z.enum(["approve", "reject", "suspend", "reinstate", "under_review", "note"]),
@@ -75,6 +76,47 @@ const getSpecializations = (_req, res) => {
     res.json(exports.SPECIALIZATIONS);
 };
 exports.getSpecializations = getSpecializations;
+/**
+ * Search doctors with filters
+ * GET /api/v1/doctors/search?query=...&specialty=...&state=...
+ */
+const searchDoctors = async (req, res) => {
+    try {
+        const { query, specialty, state } = req.query;
+        const filters = [(0, drizzle_orm_1.eq)(db_1.doctorProfiles.verificationStatus, "approved")];
+        if (specialty && specialty !== "All Specialties") {
+            filters.push((0, drizzle_orm_1.eq)(db_1.doctorProfiles.specialization, specialty));
+        }
+        if (state && state !== "All States") {
+            filters.push((0, drizzle_orm_1.eq)(db_1.doctorProfiles.hospitalState, state));
+        }
+        const results = await db_1.db
+            .select({
+            id: db_1.doctorProfiles.id,
+            userId: db_1.doctorProfiles.userId,
+            fullName: db_1.doctorProfiles.fullName,
+            specialization: db_1.doctorProfiles.specialization,
+            subSpecialization: db_1.doctorProfiles.subSpecialization,
+            currentHospital: db_1.doctorProfiles.currentHospital,
+            hospitalState: db_1.doctorProfiles.hospitalState,
+            yearsExperience: db_1.doctorProfiles.yearsExperience,
+            bio: db_1.doctorProfiles.bio,
+            avatarUrl: db_1.users.avatarUrl,
+        })
+            .from(db_1.doctorProfiles)
+            .innerJoin(db_1.users, (0, drizzle_orm_1.eq)(db_1.doctorProfiles.userId, db_1.users.id))
+            .where((0, drizzle_orm_1.and)(...filters, query
+            ? (0, drizzle_orm_1.or)((0, drizzle_orm_1.ilike)(db_1.doctorProfiles.fullName, `%${query}%`), (0, drizzle_orm_1.ilike)(db_1.doctorProfiles.currentHospital, `%${query}%`), (0, drizzle_orm_1.ilike)(db_1.doctorProfiles.specialization, `%${query}%`))
+            : undefined))
+            .limit(50);
+        res.json(results);
+    }
+    catch (err) {
+        console.error("[SEARCH DOCTORS ERROR]:", err);
+        res.status(500).json({ error: "Failed to search doctors" });
+    }
+};
+exports.searchDoctors = searchDoctors;
 /** POST /api/v1/doctors/register */
 const registerDoctor = async (req, res) => {
     const userId = req.headers["x-user-id"];
@@ -214,14 +256,22 @@ const updateDoctorProfile = async (req, res) => {
         // Pre-approval doctors can update anything
         const isApproved = profile.verificationStatus === "approved";
         const allowedFields = isApproved
-            ? ["bio", "phone", "consultationTypes", "currentHospital", "hospitalState", "hospitalLga"]
+            ? ["bio", "phone", "consultationTypes", "currentHospital", "hospitalState", "hospitalLga", "coverUrl"]
             : Object.keys(req.body);
         const updateData = { updatedAt: new Date() };
         for (const field of allowedFields) {
             if (req.body[field] !== undefined) {
+                if (field === "avatarUrl") {
+                    // Update users table for avatarUrl
+                    await db_1.db.update(db_1.users).set({ avatarUrl: req.body[field], updatedAt: new Date() }).where((0, drizzle_orm_1.eq)(db_1.users.id, userId));
+                    continue;
+                }
                 updateData[field] = Array.isArray(req.body[field])
-                    ? JSON.stringify(req.body[field])
+                    ? JSON.parse(JSON.stringify(req.body[field])) // Ensure it's not a reference if coming from body
                     : req.body[field];
+                if (Array.isArray(req.body[field])) {
+                    updateData[field] = JSON.stringify(req.body[field]);
+                }
             }
         }
         // Re-validate MDCN if being updated
@@ -306,7 +356,7 @@ const getQueueStats = async (_req, res) => {
         const [recent] = await db_1.db
             .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
             .from(db_1.doctorProfiles)
-            .where((0, drizzle_orm_1.sql) `submitted_at > ${cutoff24h}`);
+            .where((0, drizzle_orm_1.gt)(db_1.doctorProfiles.submittedAt, cutoff24h));
         res.json({
             pending: Number(stats.pending),
             under_review: Number(stats.under_review),
@@ -434,6 +484,59 @@ const moderateDoctor = async (req, res) => {
     }
 };
 exports.moderateDoctor = moderateDoctor;
+/** GET /api/v1/doctors/stats */
+const getDoctorStats = async (req, res) => {
+    const userId = req.headers["x-user-id"];
+    if (!userId)
+        return res.status(401).json({ error: "Unauthorized" });
+    try {
+        // 1. Total Consultations (All time)
+        const [totalRow] = await db_1.db
+            .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+            .from(db_1.clinicalCases)
+            .where((0, drizzle_orm_1.eq)(db_1.clinicalCases.doctorId, userId));
+        // 2. Today's Consultations
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const [todayRow] = await db_1.db
+            .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+            .from(db_1.clinicalCases)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.clinicalCases.doctorId, userId), (0, drizzle_orm_1.gte)(db_1.clinicalCases.createdAt, today)));
+        // 3. Pending Reviews (Mocked for now or count of specific cases)
+        const pendingReviews = 0; // Future improvement: track reviews
+        // 4. Active Cases (Consultations in last 7 days)
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const [activeRow] = await db_1.db
+            .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+            .from(db_1.clinicalCases)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.clinicalCases.doctorId, userId), (0, drizzle_orm_1.gte)(db_1.clinicalCases.createdAt, weekAgo)));
+        res.json({
+            totalConsultations: Number(totalRow.count),
+            todayConsultations: Number(todayRow.count),
+            pendingReviews,
+            activeCases: Number(activeRow.count),
+            referralsSent: 0, // Mocked until referrals are implemented
+        });
+    }
+    catch (err) {
+        console.error("[GET DOCTOR STATS ERROR]:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+exports.getDoctorStats = getDoctorStats;
+// ─── Controller Object (for index.ts) ─────────────────────────────────────────
+exports.DoctorsController = {
+    getSpecializations: exports.getSpecializations,
+    registerDoctor: exports.registerDoctor,
+    getDoctorProfile: exports.getDoctorProfile,
+    updateDoctorProfile: exports.updateDoctorProfile,
+    getVerificationQueue: exports.getVerificationQueue,
+    getQueueStats: exports.getQueueStats,
+    getDoctorDetail: exports.getDoctorDetail,
+    moderateDoctor: exports.moderateDoctor,
+    getDoctorStats: exports.getDoctorStats,
+    searchDoctors: exports.searchDoctors,
+};
 // ─── Private helpers ──────────────────────────────────────────────────────────
 async function logAudit(doctorId, adminId, action, previousStatus, newStatus, note) {
     await db_1.db.insert(db_1.doctorVerificationAudit).values({

@@ -187,6 +187,11 @@ const Ic = {
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 11 11 13 15 9" />
     </svg>
   ),
+  CreditCard: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" />
+    </svg>
+  ),
 };
 
 // ─── Nav Config ───────────────────────────────────────────────────────────────
@@ -199,7 +204,12 @@ const ALL_NAV: NavItem[] = [
   { id: "referrals", label: "Referrals", href: "/dashboard/referrals", icon: Ic.Clipboard, roleGate: ["doctor", "CLINICIAN"] },
 
   // Admin specific
-  { id: "admin-queue", label: "Verification Queue", href: "/dashboard/admin/doctors/queue", icon: Ic.ShieldCheck, roleGate: ["clinic", "CLINIC_ADMIN", "SUPER_ADMIN"] },
+  { id: "admin-doctors", label: "Doctor Queue", href: "/dashboard/admin/doctors/queue", icon: Ic.ShieldCheck, roleGate: ["SUPER_ADMIN"] },
+  { id: "admin-clinics", label: "Clinic Queue", href: "/dashboard/admin/clinics/queue", icon: Ic.Map, roleGate: ["SUPER_ADMIN"] },
+
+  // Clinic Admin specific
+  { id: "clinic-staff", label: "Staff Management", href: "/dashboard/settings/staff", icon: Ic.Users, roleGate: ["CLINIC_ADMIN"] },
+  { id: "clinic-billing", label: "Billing", href: "/dashboard/billing", icon: Ic.CreditCard, roleGate: ["CLINIC_ADMIN"] },
 
   // Patient / Generic
   { id: "doctors", label: "Doctors", href: "/dashboard/doctors", icon: Ic.Users, roleGate: ["patient", "PATIENT"] },

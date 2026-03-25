@@ -235,7 +235,7 @@ const checkInteractions = async (req, res) => {
                 vaccinations: profile.vaccinations ? JSON.parse(profile.vaccinations) : [],
                 medicalHistory: profile.medicalHistory ? JSON.parse(profile.medicalHistory) : [],
             } : null,
-        }, { timeout: 15000 });
+        }, { timeout: 45000 });
         const result = aiResponse.data;
         // Log
         if (userId) {
@@ -275,7 +275,7 @@ const explainDrug = async (req, res) => {
         const [profile] = userId ? await db_1.db.select().from(db_1.healthProfiles).where((0, drizzle_orm_1.eq)(db_1.healthProfiles.userId, userId)).limit(1) : [null];
         const profileContext = profile ? `Patient: ${profile.gender}, ${profile.bloodGroup}/${profile.genotype}. Chronic conditions: ${profile.chronicConditions}. Current meds: ${profile.medications}. Allergies: ${profile.allergies}.` : "";
         const mergedContext = `${profileContext}${patientContext ? ` Additional Context: ${patientContext}` : ""}`;
-        const aiResponse = await axios_1.default.post(`${AI_SERVICE_URL}/internal/drugs/explain`, { drugName, question, patientContext: mergedContext.trim() || undefined }, { timeout: 15000 });
+        const aiResponse = await axios_1.default.post(`${AI_SERVICE_URL}/internal/drugs/explain`, { drugName, question, patientContext: mergedContext.trim() || undefined }, { timeout: 45000 });
         // Log the interaction
         if (userId) {
             await db_1.db.insert(db_1.drugQueryLogs).values({

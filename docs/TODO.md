@@ -370,66 +370,66 @@
 - [x] Patient consent flow: grant/revoke doctor access to health profile [x]
 
 ### 3.6 Phase 3 Testing
-- [ ] E2E: Doctor signup → verified → run case analysis → generate referral
-- [ ] Test: unverified doctor cannot access copilot
-- [ ] Test: patient cannot access doctor routes
-- [ ] Test: referral notification reaches receiving doctor
-- [ ] Clinical accuracy spot-check: run 20 known cases through copilot, review output quality
-- [ ] Deploy Phase 3 to production
+- [x] E2E: Doctor signup → verified → run case analysis → generate referral
+- [x] Test: unverified doctor cannot access copilot
+- [x] Test: patient cannot access doctor routes
+- [x] Test: referral notification reaches receiving doctor
+- [x] Clinical accuracy spot-check: run 20 known cases through copilot, review output quality
+- [x] Deploy Phase 3 to production
 
 ---
 
 ## Phase 4 — Clinic OS + MedBridge Pulse (Week 23–32)
 
-### 4.1 Clinic Onboarding
-- [ ] Build clinic registration form
-  - [ ] Clinic name, address, state, LGA
-  - [ ] CAC registration number
-  - [ ] Contact info
-  - [ ] Subscription tier selection
-- [ ] Admin reviews and activates clinic accounts
-- [ ] Clinic owner can invite staff (send invite email → staff accepts → linked to clinic)
-- [ ] Staff roles: doctor, nurse, receptionist, admin
+### 4.1 Clinic Onboarding [x]
+- [x] Build clinic registration form
+  - [x] Clinic name, address, state, LGA
+  - [x] CAC registration number
+  - [x] Contact info
+  - [x] Subscription tier selection
+- [x] Admin reviews and activates clinic accounts
+- [x] Clinic owner can invite staff (send invite email → staff accepts → linked to clinic)
+- [x] Staff roles: doctor, nurse, receptionist, admin
 
-### 4.2 Clinic Patient Management
-- [ ] Build patient registration form for clinic (create or link existing MedBridge account)
-- [ ] Build patient list with search and filter
-- [ ] Build patient detail view (full record: visits, documents, notes, medications)
-- [ ] Import existing patient records (CSV upload with field mapping)
-- [ ] Patient consent flow: patient grants clinic access to their MedBridge profile
+### 4.2 Clinic Patient Management [x]
+- [x] Build patient registration form for clinic (create or link existing MedBridge account)
+- [x] Build patient list with search and filter
+- [x] Build patient detail view (full record: visits, documents, notes, medications)
+- [x] Import existing patient records (CSV, Excel, PDF, Word, TXT, JSON, XML, HTML, JPG, PNG, GIF, BMP, TIFF, upload with field mapping)
+- [x] Patient consent flow: patient grants clinic access to their MedBridge profile
 
-### 4.3 Appointment System
-- [ ] Build appointment creation (receptionist / doctor / patient self-book)
-- [ ] Build appointment calendar view (day / week view per doctor)
-- [ ] Build appointment list view with filters (status, date, doctor)
-- [ ] Appointment status flow: pending → confirmed → completed / cancelled
-- [ ] SMS/email reminders (24h before appointment via Resend or Africa's Talking)
-- [ ] Waitlist feature for fully-booked slots
-- [ ] Build patient-facing booking page (patients book own appointments)
+### 4.3 Appointment System [x]
+- [x] Build appointment creation (receptionist / doctor / patient self-book)
+- [x] Build appointment calendar view (day / week view per doctor)
+- [x] Build appointment list view with filters (status, date, doctor)
+- [x] Appointment status flow: pending → confirmed → completed / cancelled
+- [x] SMS/email reminders (24h before appointment via Resend or Africa's Talking)
+- [x] Waitlist feature for fully-booked slots
+- [x] Build patient-facing booking page (patients book own appointments)
 
-### 4.4 Clinical Records (EMR)
-- [ ] Build encounter/visit form (doctor fills during/after consultation)
-  - [ ] Chief complaint
-  - [ ] Examination findings
-  - [ ] Diagnosis (ICD-11 code lookup)
-  - [ ] Prescription written
-  - [ ] Lab tests ordered
-  - [ ] Follow-up instructions
-- [ ] Link AI-generated SOAP notes to encounter records
-- [ ] Build prescription pad (structured prescription creation)
-  - [ ] Drug selection from Nigerian drug DB
-  - [ ] Dosage, frequency, duration
-  - [ ] Drug interaction check runs automatically
-  - [ ] Generate printable prescription
-- [ ] Build lab order form (request tests, track results)
-- [ ] Attach uploaded documents (lab results) to patient records
+### 4.4 Clinical Records (EMR) [x]
+- [x] Build encounter/visit form (doctor fills during/after consultation)
+  - [x] Chief complaint
+  - [x] Examination findings
+  - [x] Diagnosis (ICD-11 code lookup)
+  - [x] Prescription written
+  - [x] Lab tests ordered
+  - [x] Follow-up instructions
+- [x] Link AI-generated SOAP notes to encounter records
+- [x] Build prescription pad (structured prescription creation)
+  - [x] Drug selection from Nigerian drug DB
+  - [x] Dosage, frequency, duration
+  - [x] Drug interaction check runs automatically
+  - [x] Generate printable prescription
+- [x] Build lab order form (request tests, track results)
+- [x] Attach uploaded documents (lab results) to patient records
 
-### 4.5 Billing (Basic)
-- [ ] Build invoice creation (consultation fee + tests + medications)
-- [ ] Build payment recording (cash / card / transfer — manual for now)
-- [ ] Build patient billing history
-- [ ] Basic financial reports (revenue by month, by doctor, by service type)
-- [ ] Export invoices as PDF
+### 4.5 Billing (Basic) [x]
+- [x] Build invoice creation (consultation fee + tests + medications)
+- [x] Build payment recording (cash / card / transfer — manual for now)
+- [x] Build patient billing history
+- [x] Basic financial reports (revenue by month, by doctor, by service type)
+- [x] Export invoices as PDF
 - [ ] NHIS integration research (roadmap item — complex)
 
 ### 4.6 MedBridge Pulse (Employer Dashboard)

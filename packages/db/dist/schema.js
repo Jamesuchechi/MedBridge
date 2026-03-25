@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.patientDoctorConsent = exports.consultationRequests = exports.referrals = exports.notifications = exports.copilotAuditLogs = exports.clinicalCases = exports.doctorVerificationAudit = exports.doctorProfiles = exports.moderationAuditLog = exports.drugPriceReports = exports.drugAvailabilityReports = exports.pharmacies = exports.drugQueryLogs = exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
+exports.patientDoctorConsent = exports.consultationRequests = exports.referrals = exports.notifications = exports.copilotAuditLogs = exports.clinicalCases = exports.clinicVerificationAudit = exports.clinicInvitations = exports.doctorVerificationAudit = exports.doctorProfiles = exports.moderationAuditLog = exports.drugPriceReports = exports.drugAvailabilityReports = exports.pharmacies = exports.drugQueryLogs = exports.symptomTaxonomy = exports.drugs = exports.medicalDocuments = exports.symptomChecks = exports.healthProfiles = exports.clinics = exports.users = exports.roleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 exports.roleEnum = (0, pg_core_1.pgEnum)("role", [
     "PATIENT",
@@ -24,8 +24,17 @@ exports.users = (0, pg_core_1.pgTable)("users", {
 exports.clinics = (0, pg_core_1.pgTable)("clinics", {
     id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
     name: (0, pg_core_1.text)("name").notNull(),
-    address: (0, pg_core_1.text)("address"),
+    email: (0, pg_core_1.text)("email"),
     phone: (0, pg_core_1.text)("phone"),
+    address: (0, pg_core_1.text)("address"),
+    state: (0, pg_core_1.text)("state"),
+    lga: (0, pg_core_1.text)("lga"),
+    cacNumber: (0, pg_core_1.text)("cac_number"),
+    subscriptionTier: (0, pg_core_1.text)("subscription_tier").default("BASIC").notNull(), // BASIC, PRO, ENTERPRISE
+    verificationStatus: (0, pg_core_1.text)("verification_status").default("pending").notNull(), // pending, approved, rejected
+    adminNotes: (0, pg_core_1.text)("admin_notes"),
+    verifiedBy: (0, pg_core_1.uuid)("verified_by").references(() => exports.users.id),
+    verifiedAt: (0, pg_core_1.timestamp)("verified_at"),
     createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow().notNull(),
 });
@@ -203,6 +212,27 @@ exports.doctorVerificationAudit = (0, pg_core_1.pgTable)("doctor_verification_au
     doctorId: (0, pg_core_1.uuid)("doctor_id").notNull().references(() => exports.doctorProfiles.id, { onDelete: "cascade" }),
     adminId: (0, pg_core_1.uuid)("admin_id").notNull().references(() => exports.users.id),
     action: (0, pg_core_1.text)("action").notNull(), // approve, reject, suspend, reinstate, under_review, note, submit
+    previousStatus: (0, pg_core_1.text)("previous_status"),
+    newStatus: (0, pg_core_1.text)("new_status"),
+    note: (0, pg_core_1.text)("note"),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+});
+// ─── Clinic Invitations & Audit ─────────────────────────────────────────────
+exports.clinicInvitations = (0, pg_core_1.pgTable)("clinic_invitations", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    clinicId: (0, pg_core_1.uuid)("clinic_id").notNull().references(() => exports.clinics.id, { onDelete: "cascade" }),
+    email: (0, pg_core_1.text)("email").notNull(),
+    role: (0, pg_core_1.text)("role").notNull(),
+    token: (0, pg_core_1.text)("token").unique().notNull(),
+    expiresAt: (0, pg_core_1.timestamp)("expires_at").notNull(),
+    status: (0, pg_core_1.text)("status").default("pending").notNull(), // pending, accepted, expired, revoked
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow().notNull(),
+});
+exports.clinicVerificationAudit = (0, pg_core_1.pgTable)("clinic_verification_audit", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    clinicId: (0, pg_core_1.uuid)("clinic_id").notNull().references(() => exports.clinics.id, { onDelete: "cascade" }),
+    adminId: (0, pg_core_1.uuid)("admin_id").notNull().references(() => exports.users.id),
+    action: (0, pg_core_1.text)("action").notNull(), // approve, reject, note, submit
     previousStatus: (0, pg_core_1.text)("previous_status"),
     newStatus: (0, pg_core_1.text)("new_status"),
     note: (0, pg_core_1.text)("note"),

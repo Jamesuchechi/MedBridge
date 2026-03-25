@@ -21,6 +21,8 @@ router.post("/register", doctor_middleware_1.requireDoctor, doctors_controller_1
 router.get("/me", doctor_middleware_1.requireDoctor, doctors_controller_1.getDoctorProfile);
 // PUT  /api/v1/doctors/me        — update own profile
 router.put("/me", doctor_middleware_1.requireDoctor, doctors_controller_1.updateDoctorProfile);
+// GET  /api/v1/doctors/stats     — get clinical stats
+router.get("/stats", doctor_middleware_1.requireDoctor, doctors_controller_1.getDoctorStats);
 // ─── Admin ────────────────────────────────────────────────────────────────────
 // GET   /api/v1/doctors/admin/queue/stats
 router.get("/admin/queue/stats", requireAdmin, doctors_controller_1.getQueueStats);

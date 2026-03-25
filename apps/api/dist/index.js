@@ -57,8 +57,14 @@ const documents_1 = __importDefault(require("./routes/documents"));
 const pharmacies_1 = __importDefault(require("./routes/pharmacies"));
 const drugs_1 = __importDefault(require("./routes/drugs"));
 const doctors_1 = __importDefault(require("./routes/doctors"));
+const clinics_1 = __importDefault(require("./routes/clinics"));
 const copilot_1 = __importDefault(require("./routes/copilot"));
 const patients_1 = __importDefault(require("./routes/patients"));
+const notifications_1 = __importDefault(require("./routes/notifications"));
+const referrals_1 = __importDefault(require("./routes/referrals"));
+const doctors_controller_1 = require("./controllers/doctors.controller");
+const consultations_controller_1 = require("./controllers/consultations.controller");
+const consent_controller_1 = require("./controllers/consent.controller");
 const analysis_worker_1 = require("./workers/analysis.worker");
 const app = (0, express_1.default)();
 const port = process.env.PORT || 4000;
@@ -80,8 +86,22 @@ app.use("/api/v1/documents", documents_1.default);
 app.use("/api/v1/pharmacies", pharmacies_1.default);
 app.use("/api/v1/drugs", drugs_1.default);
 app.use("/api/v1/doctors", doctors_1.default);
+app.use("/api/v1/clinics", clinics_1.default);
 app.use("/api/v1/copilot", copilot_1.default);
 app.use("/api/v1/patients", patients_1.default);
+app.use("/api/v1/notifications", notifications_1.default);
+app.use("/api/v1/referrals", referrals_1.default);
+// --- DOCTORS ---
+app.get("/api/v1/doctors/search", (req, res) => doctors_controller_1.DoctorsController.searchDoctors(req, res));
+app.get("/api/v1/doctors/:id", (req, res) => doctors_controller_1.DoctorsController.getDoctorDetail(req, res));
+// --- CONSULTATIONS ---
+app.post("/api/v1/consultations", (req, res) => consultations_controller_1.ConsultationsController.createRequest(req, res));
+app.get("/api/v1/consultations", (req, res) => consultations_controller_1.ConsultationsController.listRequests(req, res));
+app.patch("/api/v1/consultations/:id/status", (req, res) => consultations_controller_1.ConsultationsController.updateStatus(req, res));
+// --- CONSENT ---
+app.post("/api/v1/consent/grant", (req, res) => consent_controller_1.ConsentController.grantConsent(req, res));
+app.post("/api/v1/consent/revoke", (req, res) => consent_controller_1.ConsentController.revokeConsent(req, res));
+app.get("/api/v1/consent/doctors", (req, res) => consent_controller_1.ConsentController.listConsentedDoctors(req, res));
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });

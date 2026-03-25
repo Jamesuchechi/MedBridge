@@ -5,8 +5,8 @@ const db_1 = require("@medbridge/db");
 const drizzle_orm_1 = require("drizzle-orm");
 /** User must have CLINICIAN role (set in Supabase user_metadata at signup). */
 const requireDoctor = (req, res, next) => {
-    const role = req.headers["x-user-role"];
-    if (role !== "CLINICIAN") {
+    const role = req.headers["x-user-role"]?.toUpperCase();
+    if (role !== "CLINICIAN" && role !== "DOCTOR") {
         return res.status(403).json({
             error: "Clinician access required.",
             message: "This feature is only available to registered doctors on MedBridge.",
@@ -17,9 +17,9 @@ const requireDoctor = (req, res, next) => {
 exports.requireDoctor = requireDoctor;
 /** User must be a CLINICIAN with an approved, copilot-enabled doctor profile. */
 const requireVerifiedDoctor = async (req, res, next) => {
-    const role = req.headers["x-user-role"];
+    const role = req.headers["x-user-role"]?.toUpperCase();
     const userId = req.headers["x-user-id"];
-    if (role !== "CLINICIAN") {
+    if (role !== "CLINICIAN" && role !== "DOCTOR") {
         return res.status(403).json({
             error: "Clinician access required.",
             code: "NOT_CLINICIAN",
