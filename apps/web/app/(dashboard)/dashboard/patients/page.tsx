@@ -1,9 +1,23 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import * as Ic from "lucide-react";
+import Link from "next/link";
+import { useAuthStore } from "@/store/auth.store";
+import { 
+  Users, 
+  UserPlus, 
+  Search, 
+  Filter, 
+  MoreVertical,
+  Mail,
+  Phone,
+  Calendar,
+  FileUp,
+  Plus,
+  ArrowRight
+} from "lucide-react";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface ClinicalCase {
   id: string;
   patientName: string;
@@ -13,100 +27,282 @@ interface ClinicalCase {
   createdAt: string;
 }
 
+interface Patient {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: "active" | "inactive";
+  createdAt: string;
+}
+
 export default function PatientsPage() {
-  const [cases, setCases] = useState<ClinicalCase[]>([]);
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   
-  const supabase = createClient();
+  // Clinician States
+  const [cases, setCases] = useState<ClinicalCase[]>([]);
+  
+  // Clinic States
+  const [patients, setPatients] = useState<Patient[]>([]);
+
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
+  const isClinic = user?.role === "CLINIC_ADMIN";
+
   useEffect(() => {
-    const fetchCases = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+    const fetchData = async () => {
       if (!user) return;
+      setLoading(true);
 
       try {
-        const res = await fetch(`${API_URL}/api/v1/patients`, {
-          headers: {
-            "x-user-id": user.id,
-            "x-user-role": user.user_metadata?.role || "CLINICIAN"
-          }
-        });
-        if (res.ok) {
+        if (isClinic) {
+          const res = await fetch(`${API_URL}/api/v1/patients?q=${search}`, {
+            headers: {
+              "x-user-id": user.id,
+              "x-user-role": user.role
+            }
+          });
           const data = await res.json();
-          setCases(data);
+          setPatients(data.patients || []);
+        } else {
+          const res = await fetch(`${API_URL}/api/v1/patients`, {
+            headers: {
+              "x-user-id": user.id,
+              "x-user-role": user.role
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setCases(data);
+          }
         }
       } catch (err) {
-        console.error("Failed to fetch cases:", err);
+        console.error("Failed to fetch data:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchCases();
-  }, [supabase, API_URL]);
+    fetchData();
+  }, [user, isClinic, search, API_URL]);
 
+  if (loading) {
+    return (
+      <div className="p-20 flex flex-col items-center justify-center gap-4">
+        <div className="w-10 h-10 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+        <p className="text-slate-400 animate-pulse">Loading patient records...</p>
+      </div>
+    );
+  }
+
+  if (isClinic) {
+    return (
+      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-100 flex items-center gap-3 font-syne">
+              <Users className="w-8 h-8 text-accent" />
+              Patient Repository
+            </h1>
+            <p className="text-slate-400 mt-1">Manage your clinic's patient records and health profiles.</p>
+          </div>
+          <div className="flex gap-3 w-full md:w-auto">
+             <Link 
+              href="/dashboard/patients/add"
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl transition-all border border-slate-700 text-sm"
+            >
+              <FileUp className="w-4 h-4" />
+              Bulk Import
+            </Link>
+            <Link 
+              href="/dashboard/patients/add"
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-accent hover:bg-accent/90 text-black px-4 py-2 rounded-xl transition-all shadow-lg shadow-accent/10 text-sm font-bold"
+            >
+              <UserPlus className="w-4 h-4" />
+              Add Patient
+            </Link>
+          </div>
+        </div>
+
+        {/* Filters & Search */}
+        <div className="bg-card-bg border border-card-border p-4 rounded-2xl mb-6 flex flex-wrap gap-4 items-center">
+          <div className="relative flex-1 min-w-[280px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
+            <input 
+              type="text"
+              placeholder="Search patients by name, email or phone..."
+              className="w-full bg-slate-950/50 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-slate-200 focus:outline-none focus:border-accent transition-colors text-sm"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <button className="flex items-center gap-2 bg-slate-950/50 border border-slate-800 px-4 py-2 rounded-xl text-slate-300 hover:border-slate-700 transition-all text-sm">
+            <Filter className="w-4 h-4" />
+            Filters
+          </button>
+        </div>
+
+        {/* Patient List */}
+        <div className="bg-card-bg border border-card-border rounded-2xl overflow-hidden">
+          {patients.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider">
+                    <th className="px-6 py-4 font-semibold">Patient</th>
+                    <th className="px-6 py-4 font-semibold">Contact</th>
+                    <th className="px-6 py-4 font-semibold">Status</th>
+                    <th className="px-6 py-4 font-semibold">Joined</th>
+                    <th className="px-6 py-4 font-semibold"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  {patients.map((patient) => (
+                    <tr key={patient.id} className="hover:bg-white/5 transition-colors cursor-pointer group">
+                      <td className="px-6 py-4">
+                        <Link href={`/dashboard/patients/${patient.id}`} className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-accent2 flex items-center justify-center text-black font-bold">
+                            {patient.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-slate-100 group-hover:text-accent transition-colors">{patient.name}</div>
+                            <div className="text-[10px] text-slate-500 font-mono uppercase tracking-tighter">ID: {patient.id.slice(0, 8)}</div>
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4">
+                       <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-slate-300">
+                            <Mail className="w-3 h-3 text-slate-500" />
+                            {patient.email}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-slate-300">
+                            <Phone className="w-3 h-3 text-slate-500" />
+                            {patient.phone || "N/A"}
+                          </div>
+                       </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                          patient.status === "active" ? "bg-accent/10 text-accent border border-accent/20" : "bg-slate-500/10 text-slate-400 border border-slate-500/20"
+                        }`}>
+                          {patient.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-400">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-3 h-3 text-slate-600" />
+                          {new Date(patient.createdAt).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors text-slate-500 hover:text-white">
+                          <MoreVertical className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-20 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
+                <Users className="w-8 h-8 text-slate-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-200">No patients found</h3>
+              <p className="text-slate-500 max-w-sm mt-2 text-sm">
+                Start by adding a patient manually or importing records from your existing files.
+              </p>
+              <div className="mt-8">
+                 <Link 
+                  href="/dashboard/patients/add"
+                  className="bg-accent hover:bg-accent/90 text-black px-6 py-2 rounded-xl transition-all font-bold"
+                >
+                  Onboard First Patient
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Doctor View (Default)
   const filtered = cases.filter(c => 
     c.patientName.toLowerCase().includes(search.toLowerCase()) ||
     c.chiefComplaint.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div className="p-container">
-      <style>{CSS}</style>
-      
-      <div className="p-header">
+    <div className="p-8 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-10">
         <div>
-          <h1 className="p-title">My Patients</h1>
-          <p className="p-subtitle">Manage recent consultations and clinical cases</p>
+          <h1 className="text-4xl font-bold font-syne mb-2 bg-gradient-to-r from-white to-accent2 bg-clip-text text-transparent">
+            My Patients
+          </h1>
+          <p className="text-slate-400">Manage recent consultations and clinical cases</p>
         </div>
-        <button className="p-btn-primary" onClick={() => window.location.assign("/dashboard/copilot")}>
-          <Ic.Plus size={18} /> New Case
+        <button 
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:scale-105 transition-transform text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-xl shadow-indigo-900/20"
+          onClick={() => window.location.assign("/dashboard/copilot")}
+        >
+          <Plus size={20} /> New Case
         </button>
       </div>
 
-      <div className="p-search-bar">
-        <Ic.Search className="p-search-icon" size={20} />
+      <div className="relative mb-8 bg-card-bg border border-card-border rounded-2xl overflow-hidden backdrop-blur-md">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
         <input 
           placeholder="Search by patient name or complaint..." 
-          className="p-search-input"
+          className="w-full bg-transparent border-none py-4 pl-12 pr-4 text-slate-100 outline-none text-lg"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {loading ? (
-        <div className="p-loading">
-          <div className="p-spinner" />
-          <p>Loading clinical cases...</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="p-empty">
-          <div className="p-empty-icon"><Ic.Users size={48} /></div>
-          <h3>No cases found</h3>
-          <p>You haven't recorded any clinical cases yet.</p>
-          <button className="p-btn-secondary" onClick={() => window.location.assign("/dashboard/copilot")}>
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 bg-card-bg border border-dashed border-card-border rounded-3xl">
+          <div className="w-20 h-20 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 text-slate-600">
+            <Users size={48} />
+          </div>
+          <h3 className="text-2xl font-bold mb-2">No cases found</h3>
+          <p className="text-slate-500 mb-8">You haven't recorded any clinical cases yet.</p>
+          <button 
+            className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2 rounded-xl border border-slate-700 transition-all font-semibold"
+            onClick={() => window.location.assign("/dashboard/copilot")}
+          >
             Start first analysis
           </button>
         </div>
       ) : (
-        <div className="p-grid">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((c) => (
-            <div key={c.id} className="p-card" onClick={() => window.location.assign(`/dashboard/patients/${c.id}`)}>
-              <div className="p-card-header">
-                <div className="p-avatar">{c.patientName[0]}</div>
-                <div className="p-patient-info">
-                  <div className="p-patient-name">{c.patientName}</div>
-                  <div className="p-patient-meta">{c.patientAge}y • {c.patientSex}</div>
+            <div 
+              key={c.id} 
+              className="bg-card-bg border border-card-border rounded-3xl p-6 cursor-pointer hover:border-accent2 hover:bg-white/5 transition-all group flex flex-col"
+              onClick={() => window.location.assign(`/dashboard/patients/${c.id}`)}
+            >
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-14 h-14 bg-gradient-to-br from-slate-800 to-slate-900 border border-card-border rounded-2xl flex items-center justify-center font-bold text-xl text-accent2">
+                  {c.patientName[0]}
                 </div>
-                <div className="p-date">{new Date(c.createdAt).toLocaleDateString()}</div>
+                <div className="flex-1">
+                  <div className="font-bold text-lg text-slate-100 group-hover:text-accent2 transition-colors">{c.patientName}</div>
+                  <div className="text-sm text-slate-500">{c.patientAge}y • {c.patientSex}</div>
+                </div>
+                <div className="text-xs text-slate-600 font-mono mt-[-20px]">{new Date(c.createdAt).toLocaleDateString()}</div>
               </div>
-              <div className="p-card-body">
-                <div className="p-complaint-label">Chief Complaint</div>
-                <div className="p-complaint-text">{c.chiefComplaint}</div>
+              <div className="flex-grow mb-6">
+                <div className="text-[10px] uppercase tracking-widest font-black text-accent2 mb-2">Chief Complaint</div>
+                <div className="text-slate-300 line-clamp-2 leading-relaxed">{c.chiefComplaint}</div>
               </div>
-              <div className="p-card-footer">
-                <span className="p-view-link">View clinical details <Ic.ArrowRight size={14} /></span>
+              <div className="pt-4 border-t border-card-border flex items-center justify-between">
+                <span className="text-sm text-accent2 font-bold flex items-center gap-1">
+                  View details <ArrowRight size={14} />
+                </span>
               </div>
             </div>
           ))}
@@ -115,256 +311,3 @@ export default function PatientsPage() {
     </div>
   );
 }
-
-const CSS = `
-.p-container {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  color: var(--text-primary);
-  min-height: 100vh;
-}
-
-.p-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2.5rem;
-}
-
-.p-title {
-  font-size: 2.25rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 0.5rem;
-}
-
-.p-subtitle {
-  color: var(--text-secondary);
-  font-size: 1rem;
-}
-
-.p-btn-primary {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
-}
-
-.p-btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
-}
-
-.p-search-bar {
-  position: relative;
-  margin-bottom: 2rem;
-  background: var(--bg-card);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  backdrop-filter: blur(10px);
-}
-
-.p-search-icon {
-  position: absolute;
-  left: 1.25rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-muted);
-}
-
-.p-search-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  padding: 1rem 1rem 1rem 3.5rem;
-  color: var(--text-primary);
-  font-size: 1rem;
-  outline: none;
-}
-
-.p-search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.p-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 1.5rem;
-}
-
-.p-card {
-  background: var(--bg-card);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 1.5rem;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(12px);
-  display: flex;
-  flex-direction: column;
-}
-
-.p-card:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--accent-secondary);
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: var(--shadow-card);
-}
-
-.p-card-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.p-avatar {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-  border: 1px solid var(--glass-border);
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 1.25rem;
-  color: var(--accent-secondary);
-}
-
-.p-patient-name {
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: var(--text-primary);
-}
-
-.p-patient-meta {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.p-date {
-  margin-left: auto;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.p-card-body {
-  margin-bottom: 1.5rem;
-  flex-grow: 1;
-}
-
-.p-complaint-label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--accent-secondary);
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-}
-
-.p-complaint-text {
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: var(--text-primary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  opacity: 0.85;
-}
-
-.p-card-footer {
-  border-top: 1px solid var(--glass-border);
-  padding-top: 1rem;
-}
-
-.p-view-link {
-  font-size: 0.85rem;
-  color: var(--accent-secondary);
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-weight: 500;
-}
-
-.p-loading, .p-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 6rem 2rem;
-  text-align: center;
-  background: var(--bg-card);
-  border-radius: 24px;
-  border: 1px dashed var(--glass-border);
-}
-
-.p-empty-icon {
-  width: 80px;
-  height: 80px;
-  background: var(--bg-card-hover);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  margin-bottom: 1.5rem;
-}
-
-.p-empty h3 {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
-}
-
-.p-empty p {
-  color: var(--text-secondary);
-  margin-bottom: 2rem;
-}
-
-.p-btn-secondary {
-  background: var(--bg-card);
-  color: var(--text-primary);
-  border: 1px solid var(--glass-border);
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.p-btn-secondary:hover {
-  background: var(--bg-card-hover);
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.p-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--glass-border);
-  border-top-color: var(--accent-secondary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
-}
-
-@media (max-width: 640px) {
-  .p-container { padding: 1rem; }
-  .p-header { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
-  .p-grid { grid-template-columns: 1fr; }
-}
-`;

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 
 interface User {
   id: string;
@@ -67,6 +68,38 @@ function HealthRing({ score }: { score: number }) {
   );
 }
 
+const STAT_CARD_STYLE: React.CSSProperties = {
+  background: 'var(--card-bg, rgba(255,255,255,0.04))',
+  border: '1px solid var(--card-border, rgba(255,255,255,0.08))',
+  borderRadius: '18px',
+  padding: '20px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '12px',
+};
+
+const STAT_VALUE_STYLE: React.CSSProperties = {
+  fontFamily: 'Syne, sans-serif', 
+  fontSize: '28px', 
+  fontWeight: 800,
+  color: 'var(--text, #f0f4ff)',
+};
+
+const STAT_LABEL_STYLE: React.CSSProperties = {
+  fontSize: '12px', 
+  color: 'var(--text3, rgba(240,244,255,0.3))'
+};
+
+const ACTION_BTN_STYLE: React.CSSProperties = {
+  padding: '16px',
+  borderRadius: '12px',
+  background: 'rgba(255,255,255,0.02)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: 'var(--text)',
+  textAlign: 'left',
+  transition: 'all 0.2s',
+};
+
 const PATIENT_STATS = [
   { label: "Symptom Checks", value: "12", icon: Ic.Activity },
   { label: "Medications",    value: "3",  icon: Ic.Pill },
@@ -79,9 +112,14 @@ export function DashboardHome({ user }: { user: User }) {
   const part = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   const first = user.name.split(" ")[0];
   const isDoctor = ["doctor", "CLINICIAN"].includes(user.role);
+  const isClinic = ["clinic", "CLINIC_ADMIN"].includes(user.role);
+  const isEmployer = ["employer", "EMPLOYER"].includes(user.role);
 
   const [stats, setStats] = useState<Stat[]>(PATIENT_STATS);
   const [recentPatients, setRecentPatients] = useState<PatientActivity[]>([]);
+  const [clinic, setClinic] = useState<{ name: string; verificationStatus: string } | null>(null);
+  const [employer, setEmployer] = useState<{ name: string; verificationStatus: string; id: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (isDoctor && user.id) {
@@ -113,14 +151,50 @@ export function DashboardHome({ user }: { user: User }) {
           }
         } catch (err) {
           console.error("Dashboard fetch error:", err);
+        } finally {
+          setLoading(false);
         }
       };
       fetchData();
+    } else if (isClinic && user.id) {
+      setLoading(true);
+      api.get<{ name: string; verificationStatus: string }>("/api/v1/clinics/me", {
+        headers: {
+          "x-user-id": user.id,
+          "x-user-role": user.role,
+        }
+      })
+      .then(setClinic)
+      .catch(() => setClinic(null))
+      .finally(() => setLoading(false));
+    } else if (isEmployer && user.id) {
+       setLoading(true);
+       api.get<{ name: string; verificationStatus: string; id: string }>("/api/v1/employer/me", {
+         headers: {
+           "x-user-id": user.id,
+           "x-user-role": user.role,
+         }
+       })
+       .then(res => {
+         setEmployer(res);
+         setStats([
+            { label: "Enrolled Employees", value: "--", icon: Ic.Activity },
+            { label: "Pulse Alerts", value: "0", icon: Ic.Shield },
+            { label: "Recent Activity", value: "--", icon: Ic.Activity },
+            { label: "Subscription", value: "BASIC", icon: Ic.Pill },
+         ]);
+       })
+       .catch(() => setEmployer(null))
+       .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
-  }, [isDoctor, user.id, user.role]);
+  }, [isDoctor, isClinic, isEmployer, user.id, user.role]);
+
+  if (loading) return <div className="p-20 text-center animate-pulse text-muted-foreground">Loading dashboard...</div>;
 
   return (
-    <div>
+    <div className="max-w-6xl mx-auto">
       {/* ── Header row ───────────────────────────────────────────── */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
@@ -131,14 +205,93 @@ export function DashboardHome({ user }: { user: User }) {
             fontFamily: 'Syne, sans-serif', fontSize: '28px', fontWeight: 800, marginBottom: '8px'
           }}>
             {part},{" "}
-            <span style={{ color: isDoctor ? 'var(--accent2, #3d9bff)' : 'var(--accent, #00e5a0)' }}>{first}</span>
+            <span style={{ color: isDoctor ? 'var(--accent2, #3d9bff)' : isClinic ? 'var(--accent3, #c77dff)' : 'var(--accent, #00e5a0)' }}>
+              {isClinic ? (clinic?.name || first) : first}
+            </span>
           </h2>
           <p style={{ color: 'var(--text2, rgba(240,244,255,0.55))' }}>
-            {isDoctor ? "Welcome to your clinical workspace." : "Welcome to your health dashboard."}
+            {isDoctor ? "Welcome to your clinical workspace." : isClinic ? "Manage your staff, appointments, and EMR from here." : isEmployer ? "Monitor your team's health trends and wellness." : "Welcome to your health dashboard."}
           </p>
         </div>
 
-        {!isDoctor && user.profileComplete < 100 && (
+        {isEmployer && !employer && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(61,155,255,0.08), rgba(199,125,255,0.08))',
+            border: '1px solid var(--accent2, #3d9bff)',
+            borderRadius: '16px', padding: '16px 20px',
+            display: 'flex', alignItems: 'center', gap: '16px', maxWidth: '400px'
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>
+                Complete Employer Setup
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text2, rgba(240,244,255,0.55))' }}>
+                Register your company and invite employees to start tracking health trends.
+              </div>
+            </div>
+            <a
+              href="/dashboard/employer/onboarding"
+              style={{
+                background: 'var(--accent2, #3d9bff)', color: '#fff',
+                padding: '8px 16px', borderRadius: '10px',
+                fontSize: '13px', fontWeight: 700, textDecoration: 'none',
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              Get Started
+            </a>
+          </div>
+        )}
+
+        {isEmployer && employer?.verificationStatus === "pending" && (
+           <div style={{
+            background: 'rgba(255, 184, 0, 0.1)',
+            border: '1px solid var(--warn, #ffb800)',
+            borderRadius: '16px', padding: '16px 20px',
+            display: 'flex', alignItems: 'center', gap: '16px', maxWidth: '450px'
+          }}>
+             <div style={{ 
+               width: 40, height: 40, borderRadius: '50%', background: 'rgba(255, 184, 0, 0.2)', 
+               display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warn)',
+               flexShrink: 0
+             }}>⏳</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px', color: 'var(--warn)' }}>
+                Employer Review Pending
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text2, rgba(240,244,255,0.55))' }}>
+                Your company registration is under review. You'll be notified via email once approved.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isClinic && clinic?.verificationStatus !== "approved" && (
+          <div style={{
+            background: 'rgba(255, 184, 0, 0.1)',
+            border: '1px solid var(--warn, #ffb800)',
+            borderRadius: '16px', padding: '16px 20px',
+            display: 'flex', alignItems: 'center', gap: '16px', maxWidth: '450px'
+          }}>
+             <div style={{ 
+               width: 40, height: 40, borderRadius: '50%', background: 'rgba(255, 184, 0, 0.2)', 
+               display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warn)',
+               flexShrink: 0
+             }}>⏳</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px', color: 'var(--warn)' }}>
+                Verification {clinic?.verificationStatus === "pending" ? "Pending" : "Required"}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text2, rgba(240,244,255,0.55))' }}>
+                {clinic?.verificationStatus === "pending" 
+                  ? "Your clinic application is currently being reviewed. Most reviews are completed within 48 hours."
+                  : "Your clinic registration is incomplete or was rejected. Please check your settings."}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isDoctor && !isClinic && user.profileComplete < 100 && (
           <div style={{
             background: 'linear-gradient(135deg, rgba(0,229,160,0.08), rgba(61,155,255,0.08))',
             border: '1px solid var(--accent, #00e5a0)',
@@ -204,18 +357,40 @@ export function DashboardHome({ user }: { user: User }) {
         gap: '16px',
         marginBottom: '24px',
       }}>
-        {stats.map(stat => (
+        {isClinic ? (
+          <>
+            <div style={STAT_CARD_STYLE}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--accent3)' }}>
+                <div style={{ width: 32, height: 32 }}><Ic.Shield /></div>
+              </div>
+              <div style={STAT_VALUE_STYLE}>--</div>
+              <div style={STAT_LABEL_STYLE}>Total Staff</div>
+            </div>
+            <div style={STAT_CARD_STYLE}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--accent)' }}>
+                <div style={{ width: 32, height: 32 }}><Ic.Activity /></div>
+              </div>
+              <div style={STAT_VALUE_STYLE}>--</div>
+              <div style={STAT_LABEL_STYLE}>Active Patients</div>
+            </div>
+            <div style={{ ...STAT_CARD_STYLE, gridColumn: 'span 2' }}>
+               <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: '14px', fontWeight: 700, marginBottom: '16px', opacity: 0.6, textTransform: 'uppercase' }}>Quick Actions</h3>
+               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <a href="/dashboard/settings/staff" style={ACTION_BTN_STYLE}>
+                    <div style={{ fontWeight: 700 }}>Invite Staff</div>
+                    <div style={{ fontSize: '11px', opacity: 0.6 }}>Add doctors, nurses, etc.</div>
+                  </a>
+                  <button style={{ ...ACTION_BTN_STYLE, opacity: 0.5, cursor: 'not-allowed' }} disabled>
+                    <div style={{ fontWeight: 700 }}>Clinic Profile</div>
+                    <div style={{ fontSize: '11px', opacity: 0.6 }}>Edit details (soon)</div>
+                  </button>
+               </div>
+            </div>
+          </>
+        ) : stats.map(stat => (
           <div
             key={stat.label}
-            style={{
-              background: 'var(--card-bg, rgba(255,255,255,0.04))',
-              border: '1px solid var(--card-border, rgba(255,255,255,0.08))',
-              borderRadius: '18px',
-              padding: '20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-            }}
+            style={STAT_CARD_STYLE}
           >
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -229,14 +404,11 @@ export function DashboardHome({ user }: { user: User }) {
               </span>
             </div>
 
-            <div style={{
-              fontFamily: 'Syne, sans-serif', fontSize: '28px', fontWeight: 800,
-              color: 'var(--text, #f0f4ff)',
-            }}>
+            <div style={STAT_VALUE_STYLE}>
               {stat.value}
             </div>
 
-            <div style={{ fontSize: '12px', color: 'var(--text3, rgba(240,244,255,0.3))' }}>
+            <div style={STAT_LABEL_STYLE}>
               {stat.label}
             </div>
           </div>

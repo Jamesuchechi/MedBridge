@@ -124,3 +124,25 @@ async def call_llm_with_fallback(
             continue
             
     return None, "mock", "fallback-failed"
+
+async def call_llm(
+    prompt: str,
+    system_prompt: str = "You are a helpful medical assistant.",
+    require_vision: bool = False,
+    response_format: Optional[Dict] = None,
+    **kwargs
+) -> Optional[str]:
+    """
+    Backward-compatible wrapper for call_llm_with_fallback.
+    """
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt}
+    ]
+    content, _, _ = await call_llm_with_fallback(
+        messages=messages,
+        require_vision=require_vision,
+        response_format=response_format,
+        **kwargs
+    )
+    return content

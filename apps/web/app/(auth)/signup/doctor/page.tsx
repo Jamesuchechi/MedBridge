@@ -7,11 +7,14 @@ import { api } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface DoctorFormData {
-  // Step 1 — Personal
+  // Step 1 — Account (New)
+  email:       string;
+  password:    string;
+  // Step 2 — Personal
   fullName:    string;
   gender:      string;
   phone:       string;
-  // Step 2 — Professional
+  // Step 3 — Professional
   mdcnNumber:  string;
   specialization: string;
   subSpecialization: string;
@@ -19,13 +22,14 @@ interface DoctorFormData {
   currentHospital: string;
   hospitalState: string;
   isIndependent: boolean;
-  // Step 3 — Practice
+  // Step 4 — Practice
   consultationTypes: string[];
   languages:   string[];
   bio:         string;
 }
 
 const EMPTY: DoctorFormData = {
+  email: "", password: "",
   fullName: "", gender: "", phone: "",
   mdcnNumber: "", specialization: "", subSpecialization: "",
   yearsExperience: "", currentHospital: "", hospitalState: "",
@@ -139,9 +143,15 @@ const Ic = {
   Back:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
   ArrowR:  () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
   Alert:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  Mail:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,4 12,13 2,4"/></svg>,
+  Lock:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+  User:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  Eye:     () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  EyeOff:  () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>,
 };
 
 const STEPS = [
+  { label: "Account",       sub: "Create your login details" },
   { label: "Personal Info", sub: "Your name and contact details" },
   { label: "Professional",  sub: "MDCN credentials and specialty" },
   { label: "Practice",      sub: "How you see patients" },
@@ -171,8 +181,10 @@ export default function DoctorSignupPage() {
     const init = async () => {
       const supabase = createClient();
       const { data: { user: u } } = await supabase.auth.getUser();
-      if (!u) { window.location.href = "/login?redirect=/signup/doctor"; return; }
-      setUser({ id: u.id, email: u.email || "" });
+      if (u) {
+        setUser({ id: u.id, email: u.email || "" });
+        setStep(2); // Skip Step 1 if logged in
+      }
 
       // Fetch specializations from API
       api.get<string[]>("/api/v1/doctors/specializations")
@@ -184,12 +196,22 @@ export default function DoctorSignupPage() {
 
   const validateStep1 = () => {
     const e: Record<string, string> = {};
+    if (!user) { // Only validate email/pw if not logged in
+      if (!data.email.trim()) e.email = "Email is required.";
+      if (!data.password.trim()) e.password = "Password is required.";
+      else if (data.password.length < 8) e.password = "Password must be at least 8 characters.";
+    }
+    return e;
+  };
+
+  const validateStep2 = () => {
+    const e: Record<string, string> = {};
     if (!data.fullName.trim())  e.fullName  = "Full name is required.";
     if (!data.phone.trim())     e.phone     = "Phone number is required.";
     return e;
   };
 
-  const validateStep2 = () => {
+  const validateStep3 = () => {
     const e: Record<string, string> = {};
     if (!data.mdcnNumber.trim())    e.mdcnNumber    = "MDCN number is required.";
     else if (!mdcnValid)             e.mdcnNumber    = "Format must be MDCN/12345/2020.";
@@ -201,17 +223,42 @@ export default function DoctorSignupPage() {
     let errs: Record<string, string> = {};
     if (step === 1) errs = validateStep1();
     if (step === 2) errs = validateStep2();
+    if (step === 3) errs = validateStep3();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
     setStep(step + 1);
   };
 
   const handleSubmit = async () => {
-    if (!user) return;
     setLoading(true);
     setGlobalError("");
 
     try {
+      let currentUserId = user?.id;
+
+      // 1. If no user, create one first
+      if (!currentUserId) {
+        const supabase = createClient();
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: data.email,
+          password: data.password,
+          options: {
+            data: {
+              full_name: data.fullName,
+              role: "CLINICIAN",
+            },
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("Failed to create account.");
+        currentUserId = authData.user.id;
+      }
+
+      if (!currentUserId) throw new Error("Failed to generate user ID.");
+
+      // 2. Register doctor profile
       await api.post("/api/v1/doctors/register", {
         fullName:          data.fullName.trim(),
         gender:            data.gender || undefined,
@@ -228,16 +275,14 @@ export default function DoctorSignupPage() {
         bio:               data.bio.trim() || undefined,
       }, {
         headers: {
-          "x-user-id":   user.id,
+          "x-user-id":   currentUserId,
           "x-user-role": "CLINICIAN",
         },
       });
 
       setSubmitted(true);
     } catch (err: unknown) {
-      const message = (err as { data?: { error?: string } })?.data?.error ||
-                      "Something went wrong. Please try again.";
-      setGlobalError(message);
+      setGlobalError((err as Error).message || "Failed to register. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -319,8 +364,49 @@ export default function DoctorSignupPage() {
           </div>
         </div>
 
-        {/* ── Step 1 — Personal ─────────────────────────────────────────────── */}
+        {/* ── Step 1 — Account ─────────────────────────────────────────────── */}
         {step === 1 && (
+          <div className="ds-section">
+            <div className="ds-section-title">Account Details</div>
+            <div className="ds-section-sub">Create your doctor account on MedBridge</div>
+
+            <div className="ds-field">
+              <label className="ds-label">Official Email <span className="req">*</span></label>
+              <div className="ds-input-wrap" style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}><Ic.Mail /></div>
+                <input
+                  className={`ds-input ${errors.email ? "error" : ""}`}
+                  style={{ paddingLeft: 40 }}
+                  placeholder="doctor@hospital.com"
+                  type="email"
+                  value={data.email}
+                  onChange={(e) => set({ email: e.target.value })}
+                  autoFocus
+                />
+              </div>
+              {errors.email && <span className="ds-error">{errors.email}</span>}
+            </div>
+
+            <div className="ds-field">
+              <label className="ds-label">Password <span className="req">*</span></label>
+              <div className="ds-input-wrap" style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}><Ic.Lock /></div>
+                <input
+                  className={`ds-input ${errors.password ? "error" : ""}`}
+                  style={{ paddingLeft: 40 }}
+                  type="password"
+                  placeholder="Min. 8 characters"
+                  value={data.password}
+                  onChange={(e) => set({ password: e.target.value })}
+                />
+              </div>
+              {errors.password && <span className="ds-error">{errors.password}</span>}
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 2 — Personal ─────────────────────────────────────────────── */}
+        {step === 2 && (
           <div className="ds-section">
             <div className="ds-section-title">Personal Information</div>
             <div className="ds-section-sub">Your name as it appears on your MDCN certificate</div>
@@ -361,8 +447,8 @@ export default function DoctorSignupPage() {
           </div>
         )}
 
-        {/* ── Step 2 — Professional ─────────────────────────────────────────── */}
-        {step === 2 && (
+        {/* ── Step 3 — Professional ─────────────────────────────────────────── */}
+        {step === 3 && (
           <div className="ds-section">
             <div className="ds-section-title">MDCN Credentials</div>
             <div className="ds-section-sub">Enter exactly as shown on your MDCN certificate</div>
@@ -519,12 +605,12 @@ export default function DoctorSignupPage() {
 
         {/* Navigation */}
         <div className="ds-nav">
-          {step > 1 && (
+          {step > (user ? 2 : 1) && (
             <button className="ds-btn ds-btn-ghost" onClick={() => setStep(step - 1)}>
               <Ic.Back /> Back
             </button>
           )}
-          {step < 3 ? (
+          {step < 4 ? (
             <button className="ds-btn ds-btn-primary" onClick={handleNext}>
               Continue <Ic.ArrowR />
             </button>

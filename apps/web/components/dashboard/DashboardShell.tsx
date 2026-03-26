@@ -17,7 +17,7 @@ import { NotificationDropdown } from "./NotificationDropdown";
 import { io } from "socket.io-client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type UserRole = "PATIENT" | "CLINICIAN" | "CLINIC_ADMIN" | "SUPER_ADMIN" | "patient" | "doctor" | "clinic";
+type UserRole = "PATIENT" | "CLINICIAN" | "CLINIC_ADMIN" | "SUPER_ADMIN" | "EMPLOYER" | "patient" | "doctor" | "clinic" | "employer";
 interface User {
   id: string;
   name: string;
@@ -203,6 +203,11 @@ const ALL_NAV: NavItem[] = [
   { id: "patients", label: "My Patients", href: "/dashboard/patients", icon: Ic.Users, roleGate: ["doctor", "CLINICIAN"] },
   { id: "referrals", label: "Referrals", href: "/dashboard/referrals", icon: Ic.Clipboard, roleGate: ["doctor", "CLINICIAN"] },
 
+  // Employer Pulse specific
+  { id: "employer-home", label: "Overview", href: "/dashboard/employer", icon: Ic.Home, roleGate: ["employer", "EMPLOYER"] },
+  { id: "employer-employees", label: "Employees", href: "/dashboard/employer/employees", icon: Ic.Users, roleGate: ["employer", "EMPLOYER"] },
+  { id: "employer-pulse", label: "Pulse Analytics", href: "/dashboard/employer/pulse", icon: Ic.Activity, badge: "AI", roleGate: ["employer", "EMPLOYER"] },
+
   // Admin specific
   { id: "admin-doctors", label: "Doctor Queue", href: "/dashboard/admin/doctors/queue", icon: Ic.ShieldCheck, roleGate: ["SUPER_ADMIN"] },
   { id: "admin-clinics", label: "Clinic Queue", href: "/dashboard/admin/clinics/queue", icon: Ic.Map, roleGate: ["SUPER_ADMIN"] },
@@ -234,6 +239,8 @@ const ROLE_META: Record<string, { label: string; color: string; bg: string }> = 
   clinic: { label: "Clinic Admin", color: "var(--accent3)", bg: "rgba(199,125,255,0.12)" },
   CLINIC_ADMIN: { label: "Clinic Admin", color: "var(--accent3)", bg: "rgba(199,125,255,0.12)" },
   SUPER_ADMIN: { label: "Super Admin", color: "var(--accent3)", bg: "rgba(199,125,255,0.12)" },
+  employer: { label: "Employer", color: "var(--accent2)", bg: "rgba(61,155,255,0.12)" },
+  EMPLOYER: { label: "Employer", color: "var(--accent2)", bg: "rgba(61,155,255,0.12)" },
 };
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -736,7 +743,7 @@ export default function DashboardShell({ children }: { children?: ReactNode }) {
       </div>
 
       <nav className="mobile-bottom-nav">
-        {ALL_NAV.filter(n => ["home", "symptoms", "documents", "drugs", "profile"].includes(n.id)).map(n => (
+        {ALL_NAV.filter(n => ["home", "employer-home", "symptoms", "employer-pulse", "documents", "drugs", "profile"].includes(n.id)).map(n => (
           <a key={n.id} href={n.href} className={`mobile-nav-item ${activeNav === n.id ? "active" : ""}`}>
             <n.icon />
             <span className="mobile-nav-label">{n.label.split(" ")[0]}</span>

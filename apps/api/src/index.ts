@@ -36,6 +36,7 @@ import prescriptionRoutes from "./routes/prescriptions";
 import labOrderRoutes from "./routes/lab-orders";
 import invoiceRoutes from "./routes/invoices";
 import paymentRoutes from "./routes/payments";
+import employerRoutes from "./routes/employer";
 import { DoctorsController } from "./controllers/doctors.controller";
 import { ConsultationsController } from "./controllers/consultations.controller";
 import { ConsentController } from "./controllers/consent.controller";
@@ -78,6 +79,7 @@ app.use("/api/v1/referrals", referralRoutes);
 app.use("/api/v1/appointments", appointmentsRoutes);
 app.use("/api/v1/encounters", encounterRoutes);
 app.use("/api/v1/prescriptions", prescriptionRoutes);
+app.use("/api/v1/employer", employerRoutes);
 
 
 // --- DOCTORS ---
@@ -120,7 +122,7 @@ app.post("/api/auth/sync", async (req: Request, res: Response) => {
       const r = (rawRole || "").toUpperCase();
       if (r === "DOCTOR") return "CLINICIAN";
       if (r === "CLINIC") return "CLINIC_ADMIN";
-      const valid = ["PATIENT", "CLINICIAN", "CLINIC_STAFF", "CLINIC_ADMIN", "SUPER_ADMIN"] as const;
+      const valid = ["PATIENT", "CLINICIAN", "CLINIC_STAFF", "CLINIC_ADMIN", "SUPER_ADMIN", "EMPLOYER"] as const;
       return (valid as readonly string[]).includes(r) ? (r as UserRole) : "PATIENT";
     };
 

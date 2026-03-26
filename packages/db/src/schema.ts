@@ -6,6 +6,7 @@ export const roleEnum = pgEnum("role", [
   "CLINIC_STAFF",
   "CLINIC_ADMIN",
   "SUPER_ADMIN",
+  "EMPLOYER",
 ]);
 
 export type UserRole = (typeof roleEnum.enumValues)[number];
@@ -19,6 +20,7 @@ export const users = pgTable("users", {
   isVerified: boolean("is_verified").default(false).notNull(),
   mdcnVerified: boolean("mdcn_verified").default(false),
   clinicId: uuid("clinic_id"),
+  employerId: uuid("employer_id"),
   phone: text("phone"),
   avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -270,6 +272,48 @@ export const clinicVerificationAudit = pgTable("clinic_verification_audit", {
   previousStatus: text("previous_status"),
   newStatus:      text("new_status"),
   note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Employer Pulse ──────────────────────────────────────────────────────────
+export const employers = pgTable("employers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  email: text("email").unique().notNull(),
+  phone: text("phone"),
+  address: text("address"),
+  state: text("state"),
+  lga: text("lga"),
+  industry: text("industry"),
+  size: integer("size"),
+  subscriptionTier: text("subscription_tier").default("BASIC").notNull(), // BASIC, PULSE
+  verificationStatus: text("verification_status").default("pending").notNull(), // pending, approved, rejected
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const employerEmployees = pgTable("employer_employees", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  employerId: uuid("employer_id").notNull().references(() => employers.id, { onDelete: "cascade" }),
+  employeeId: uuid("employee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  employeeIdNumber: text("employee_id_number"), // Company specific ID
+  department: text("department"),
+  status: text("status").default("active").notNull(), // active, inactive
+  joinedAt: timestamp("joined_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const employerInvitations = pgTable("employer_invitations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  employerId: uuid("employer_id").notNull().references(() => employers.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  role: text("role").default("employee").notNull(),
+  department: text("department"),
+  employeeIdNumber: text("employee_id_number"),
+  token: text("token").unique().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  status: text("status").default("pending").notNull(), // pending, accepted, expired, revoked
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

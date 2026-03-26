@@ -7,21 +7,25 @@ import { api } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ClinicFormData {
-  // Step 1 — Basic Info
-  name:      string;
+  // Step 1 — Account (New)
   email:     string;
+  password:  string;
+  adminName: string;
+  // Step 2 — Basic Info
+  name:      string;
   phone:     string;
-  // Step 2 — Location & Registration
+  // Step 3 — Location & Registration
   address:   string;
   state:     string;
   lga:       string;
   cacNumber: string;
-  // Step 3 — Preferences
+  // Step 4 — Preferences
   subscriptionTier: string;
 }
 
 const EMPTY: ClinicFormData = {
-  name: "", email: "", phone: "",
+  email: "", password: "", adminName: "",
+  name: "", phone: "",
   address: "", state: "", lga: "", cacNumber: "",
   subscriptionTier: "BASIC",
 };
@@ -95,10 +99,14 @@ const Ic = {
   Back:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
   ArrowR:  () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
   Alert:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  Mail:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,4 12,13 2,4"/></svg>,
+  Lock:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+  User:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
 };
 
 const STEPS = [
-  { label: "Basic Info",    sub: "Clinic name and contact" },
+  { label: "Account",       sub: "Clinic admin credentials" },
+  { label: "Clinic Info",   sub: "Clinic name and contact" },
   { label: "Registration",  sub: "Legal and location details" },
   { label: "Finalize",      sub: "Review and submit" },
 ];
@@ -118,24 +126,34 @@ export default function ClinicSignupPage() {
     const init = async () => {
       const supabase = createClient();
       const { data: { user: u } } = await supabase.auth.getUser();
-      if (!u) { window.location.href = "/login?redirect=/signup/clinic"; return; }
-      setUser({ id: u.id, email: u.email || "" });
-      
-      // Auto-fill clinic email if available
-      if (u.email) set({ email: u.email });
+      if (u) {
+        setUser({ id: u.id, email: u.email || "" });
+        setStep(2); // Skip Step 1 if logged in
+        if (u.email) set({ email: u.email });
+      }
     };
     init();
   }, []);
 
   const validateStep1 = () => {
     const e: Record<string, string> = {};
-    if (!data.name.trim())  e.name  = "Clinic name is required.";
-    if (!data.email.trim()) e.email = "Contact email is required.";
-    if (!data.phone.trim()) e.phone = "Phone number is required.";
+    if (!user) {
+      if (!data.email.trim()) e.email = "Admin email is required.";
+      if (!data.password.trim()) e.password = "Password is required.";
+      else if (data.password.length < 8) e.password = "Min. 8 characters required.";
+      if (!data.adminName.trim()) e.adminName = "Admin name is required.";
+    }
     return e;
   };
 
   const validateStep2 = () => {
+    const e: Record<string, string> = {};
+    if (!data.name.trim())  e.name  = "Clinic name is required.";
+    if (!data.phone.trim()) e.phone = "Phone number is required.";
+    return e;
+  };
+
+  const validateStep3 = () => {
     const e: Record<string, string> = {};
     if (!data.address.trim()) e.address = "Clinic address is required.";
     if (!data.state)          e.state   = "State is required.";
@@ -147,30 +165,54 @@ export default function ClinicSignupPage() {
     let errs: Record<string, string> = {};
     if (step === 1) errs = validateStep1();
     if (step === 2) errs = validateStep2();
+    if (step === 3) errs = validateStep3();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
     setStep(step + 1);
   };
 
   const handleSubmit = async () => {
-    if (!user) return;
     setLoading(true);
     setGlobalError("");
 
     try {
+      let currentUserId = user?.id;
+
+      // 1. Auth if needed
+      if (!currentUserId) {
+        const supabase = createClient();
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: data.email,
+          password: data.password,
+          options: {
+            data: {
+              full_name: data.adminName,
+              role: "CLINIC_ADMIN",
+            },
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("Failed to create account.");
+        currentUserId = authData.user.id;
+      }
+
+      if (!currentUserId) throw new Error("Failed to generate user ID.");
+
+      // 2. Register clinic
       await api.post("/api/v1/clinics/register", {
         ...data,
       }, {
         headers: {
-          "x-user-id":   user.id,
+          "x-user-id":   currentUserId,
           "x-user-role": "CLINIC_ADMIN",
         },
       });
 
       setSubmitted(true);
     } catch (err: unknown) {
-      const apiErr = err as { data?: { error?: string } };
-      setGlobalError(apiErr.data?.error || "Failed to register clinic. Please try again.");
+      setGlobalError((err as Error).message || "Failed to register clinic. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -227,7 +269,62 @@ export default function ClinicSignupPage() {
 
         {step === 1 && (
           <div className="cs-section">
-            <div className="cs-section-title">Basic Information</div>
+            <div className="cs-section-title">Account Details</div>
+            <div className="cs-section-sub">Clinic administrator credentials</div>
+
+            <div className="cs-field">
+              <label className="cs-label">Admin Full Name <span className="req">*</span></label>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}><Ic.User /></div>
+                <input
+                  className={`cs-input ${errors.adminName ? "error" : ""}`}
+                  style={{ paddingLeft: 40 }}
+                  placeholder="John Doe"
+                  value={data.adminName}
+                  onChange={(e) => set({ adminName: e.target.value })}
+                  autoFocus
+                />
+              </div>
+              {errors.adminName && <span className="cs-error">{errors.adminName}</span>}
+            </div>
+
+            <div className="cs-field">
+              <label className="cs-label">Admin Email <span className="req">*</span></label>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}><Ic.Mail /></div>
+                <input
+                  className={`cs-input ${errors.email ? "error" : ""}`}
+                  style={{ paddingLeft: 40 }}
+                  type="email"
+                  placeholder="admin@clinic.com"
+                  value={data.email}
+                  onChange={(e) => set({ email: e.target.value })}
+                />
+              </div>
+              {errors.email && <span className="cs-error">{errors.email}</span>}
+            </div>
+
+            <div className="cs-field">
+              <label className="cs-label">Password <span className="req">*</span></label>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}><Ic.Lock /></div>
+                <input
+                  className={`cs-input ${errors.password ? "error" : ""}`}
+                  style={{ paddingLeft: 40 }}
+                  type="password"
+                  placeholder="Min. 8 characters"
+                  value={data.password}
+                  onChange={(e) => set({ password: e.target.value })}
+                />
+              </div>
+              {errors.password && <span className="cs-error">{errors.password}</span>}
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="cs-section">
+            <div className="cs-section-title">Clinic Information</div>
             <div className="cs-section-sub">Public clinic details for patient discovery</div>
 
             <div className="cs-field">
@@ -243,19 +340,7 @@ export default function ClinicSignupPage() {
             </div>
 
             <div className="cs-field">
-              <label className="cs-label">Official Email <span className="req">*</span></label>
-              <input
-                className={`cs-input ${errors.email ? "error" : ""}`}
-                type="email"
-                placeholder="contact@clinic.com"
-                value={data.email}
-                onChange={(e) => set({ email: e.target.value })}
-              />
-              {errors.email && <span className="cs-error">{errors.email}</span>}
-            </div>
-
-            <div className="cs-field">
-              <label className="cs-label">Phone Number <span className="req">*</span></label>
+              <label className="cs-label">Clinic Phone Number <span className="req">*</span></label>
               <input
                 className={`cs-input ${errors.phone ? "error" : ""}`}
                 placeholder="08012345678"
@@ -267,7 +352,7 @@ export default function ClinicSignupPage() {
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <div className="cs-section">
             <div className="cs-section-title">Legal & Location</div>
             <div className="cs-section-sub">Required for identity verification</div>
@@ -346,12 +431,12 @@ export default function ClinicSignupPage() {
         )}
 
         <div className="cs-nav">
-          {step > 1 && (
+          {step > (user ? 2 : 1) && (
             <button className="cs-btn cs-btn-ghost" onClick={() => setStep(step - 1)}>
               <Ic.Back /> Back
             </button>
           )}
-          {step < 3 ? (
+          {step < 4 ? (
             <button className="cs-btn cs-btn-primary" onClick={handleNext}>
               Continue <Ic.ArrowR />
             </button>

@@ -127,6 +127,13 @@
       "when": 1774438489635,
       "tag": "0018_brief_archangel",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1774440575852,
+      "tag": "0019_classy_reavers",
+      "breakpoints": true
     }
   ]
 }

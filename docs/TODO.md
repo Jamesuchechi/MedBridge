@@ -430,7 +430,7 @@
 - [x] Build patient billing history
 - [x] Basic financial reports (revenue by month, by doctor, by service type)
 - [x] Export invoices as PDF
-- [ ] NHIS integration research (roadmap item — complex)
+- [x] NHIS integration research (roadmap item — complex)
 
 ### 4.6 MedBridge Pulse (Employer Dashboard)
 - [ ] Build employer account type and onboarding
